@@ -1,374 +1,570 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 
-type TradeDraft = 'quick' | 'position' | 'guided'
+type TicketPrototype = 'balanced' | 'allocation' | 'outcome'
 type TradeDirection = 'buy' | 'sell' | 'short' | 'cover'
 type OrderType = 'market' | 'limit'
 
-type DirectionMeta = {
-  label: string
-  helper: string
-  sourceTitle: string
+type Instrument = {
+  name: string
+  code: string
+  price: number
+  change: number
+  longQuantity?: number
+  shortQuantity?: number
 }
 
-const directionMeta: Record<TradeDirection, DirectionMeta> = {
-  buy: {
-    label: '매수',
-    helper: '롱 포지션 늘리기',
-    sourceTitle: '거래 가능 종목',
-  },
-  sell: {
-    label: '매도',
-    helper: '롱 포지션 줄이기',
-    sourceTitle: '내 Long 보유종목',
-  },
-  short: {
-    label: '공매도',
-    helper: '하락 방향 포지션',
-    sourceTitle: '공매도 가능 종목',
-  },
-  cover: {
-    label: '공매도 상환',
-    helper: '숏 포지션 줄이기',
-    sourceTitle: '내 Short 보유종목',
-  },
-}
+const CASH_BALANCE = 8_420_000
 
-const stockOptions: Record<TradeDirection, Array<{ name: string; code: string; detail: string; value: string }>> = {
-  buy: [
-    { name: '삼성전자', code: '005930', detail: '+2.1%', value: '71,300원' },
-    { name: 'SK하이닉스', code: '000660', detail: '+1.4%', value: '188,200원' },
-  ],
-  sell: [
-    { name: '삼성전자', code: '42주 보유', detail: '+8.4%', value: '2,994,600원' },
-    { name: '현대차', code: '8주 보유', detail: '-1.2%', value: '1,936,000원' },
-  ],
-  short: [
-    { name: '에코프로', code: '086520', detail: '대여 가능', value: '92,500원' },
-    { name: '카카오', code: '035720', detail: '대여 가능', value: '43,600원' },
-  ],
-  cover: [
-    { name: '에코프로', code: '12주 Short', detail: '+3.1%', value: '1,110,000원' },
-    { name: '카카오', code: '20주 Short', detail: '-2.4%', value: '872,000원' },
-  ],
-}
-
-const draftTabs: Array<{ key: TradeDraft; label: string }> = [
-  { key: 'quick', label: 'A 빠른 주문' },
-  { key: 'position', label: 'B 포지션' },
-  { key: 'guided', label: 'C 단계별' },
+const instruments: Instrument[] = [
+  { name: '삼성전자', code: '005930', price: 71_300, change: 2.1, longQuantity: 42 },
+  { name: 'SK하이닉스', code: '000660', price: 188_200, change: 1.4, longQuantity: 18 },
+  { name: '에코프로', code: '086520', price: 92_500, change: -1.1, shortQuantity: 12 },
+  { name: '현대차', code: '005380', price: 242_000, change: -0.3, longQuantity: 8 },
+  { name: '카카오', code: '035720', price: 43_600, change: 0.8, shortQuantity: 20 },
+  { name: 'NAVER', code: '035420', price: 214_500, change: 0.4, longQuantity: 11 },
+  { name: 'LG에너지솔루션', code: '373220', price: 381_000, change: -0.7, longQuantity: 5 },
+  { name: 'POSCO홀딩스', code: '005490', price: 348_500, change: -0.5, shortQuantity: 6 },
 ]
 
-function DirectionSelector({
+const directionMeta: Record<TradeDirection, {
+  tabLabel: string
+  label: string
+  searchLabel: string
+  quantityBasis: string
+}> = {
+  buy: {
+    tabLabel: '매수',
+    label: '매수',
+    searchLabel: '종목명·코드 검색',
+    quantityBasis: '현금 기준',
+  },
+  sell: {
+    tabLabel: '매도',
+    label: '매도',
+    searchLabel: '내 Long 보유종목',
+    quantityBasis: '보유 수량 기준',
+  },
+  short: {
+    tabLabel: '공매도',
+    label: '공매도',
+    searchLabel: '공매도 가능 종목 검색',
+    quantityBasis: '주문 가능 금액 기준',
+  },
+  cover: {
+    tabLabel: '상환',
+    label: '공매도 상환',
+    searchLabel: '내 Short 보유종목',
+    quantityBasis: 'Short 보유 수량 기준',
+  },
+}
+
+const prototypeOptions: Array<{ key: TicketPrototype; label: string }> = [
+  { key: 'balanced', label: '1 균형형' },
+  { key: 'allocation', label: '2 비중형' },
+  { key: 'outcome', label: '3 결과형' },
+]
+
+function formatWon(value: number) {
+  return `${Math.max(0, Math.round(value)).toLocaleString('ko-KR')}원`
+}
+
+function DirectionTabs({
   direction,
   onChange,
   shortAllowed,
-  compact = false,
 }: {
   direction: TradeDirection
   onChange: (direction: TradeDirection) => void
   shortAllowed: boolean
-  compact?: boolean
 }) {
   const directions = (Object.keys(directionMeta) as TradeDirection[])
     .filter((item) => shortAllowed || (item !== 'short' && item !== 'cover'))
 
   return (
-    <div className={`trade-direction-grid ${compact ? 'is-compact' : ''}`} aria-label="거래 방향">
+    <div className="ticket-direction-tabs" role="tablist" aria-label="거래 방향">
       {directions.map((item) => (
         <button
           type="button"
+          role="tab"
+          aria-selected={item === direction}
           className={item === direction ? 'is-selected' : ''}
-          aria-pressed={item === direction}
           data-direction={item}
           key={item}
           onClick={() => onChange(item)}
         >
-          <strong>{directionMeta[item].label}</strong>
-          {!compact && <span>{directionMeta[item].helper}</span>}
+          {directionMeta[item].tabLabel}
         </button>
       ))}
     </div>
   )
 }
 
-function StockPicker({ direction }: { direction: TradeDirection }) {
-  const options = stockOptions[direction]
+function InstrumentAccess({
+  direction,
+  selectedInstrument,
+  searchQuery,
+  searchFocused,
+  onSearchQueryChange,
+  onSearchFocusChange,
+  onSelectInstrument,
+  onOpenAllHoldings,
+}: {
+  direction: TradeDirection
+  selectedInstrument: Instrument
+  searchQuery: string
+  searchFocused: boolean
+  onSearchQueryChange: (query: string) => void
+  onSearchFocusChange: (focused: boolean) => void
+  onSelectInstrument: (instrument: Instrument) => void
+  onOpenAllHoldings: () => void
+}) {
+  const isSearchDirection = direction === 'buy' || direction === 'short'
+  const eligibleInstruments = direction === 'sell'
+    ? instruments.filter((instrument) => instrument.longQuantity)
+    : direction === 'cover'
+      ? instruments.filter((instrument) => instrument.shortQuantity)
+      : instruments
+
+  const searchResults = eligibleInstruments.filter((instrument) => {
+    const normalizedQuery = searchQuery.replace(/ /g, '').toLowerCase()
+    return !normalizedQuery
+      || instrument.name.toLowerCase().includes(normalizedQuery)
+      || instrument.code.includes(normalizedQuery)
+  })
+
+  if (isSearchDirection) {
+    return (
+      <section className="ticket-instrument-section">
+        <div className="ticket-section-label">{directionMeta[direction].searchLabel}</div>
+        <div className="ticket-search-wrap">
+          <span aria-hidden="true">⌕</span>
+          <input
+            type="search"
+            value={searchQuery}
+            inputMode="search"
+            enterKeyHint="search"
+            aria-label={directionMeta[direction].searchLabel}
+            placeholder={directionMeta[direction].searchLabel}
+            onFocus={() => onSearchFocusChange(true)}
+            onBlur={() => window.setTimeout(() => onSearchFocusChange(false), 100)}
+            onChange={(event) => onSearchQueryChange(event.target.value)}
+          />
+          {searchQuery && <button type="button" aria-label="검색어 지우기" onClick={() => onSearchQueryChange('')}>×</button>}
+          {searchFocused && (
+            <div className="ticket-search-results">
+              {searchResults.slice(0, 4).map((instrument) => (
+                <button
+                  type="button"
+                  key={`${direction}-${instrument.code}`}
+                  onPointerDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    onSelectInstrument(instrument)
+                    onSearchQueryChange(instrument.name)
+                    onSearchFocusChange(false)
+                  }}
+                >
+                  <span><strong>{instrument.name}</strong><small>{instrument.code}</small></span>
+                  <span><strong>{formatWon(instrument.price)}</strong><small className={instrument.change >= 0 ? 'is-positive' : 'is-negative'}>{instrument.change >= 0 ? '+' : ''}{instrument.change}%</small></span>
+                </button>
+              ))}
+              {searchResults.length === 0 && (
+                <p className="ticket-search-empty">일치하는 종목이 없어요. 종목명이나 코드를 다시 확인해 주세요.</p>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+    )
+  }
 
   return (
-    <section className="trade-field-group">
-      <div className="trade-field-heading">
-        <strong>{directionMeta[direction].sourceTitle}</strong>
-        {(direction === 'buy' || direction === 'short') && <button type="button">검색</button>}
+    <section className="ticket-instrument-section">
+      <div className="ticket-section-heading">
+        <span className="ticket-section-label">{directionMeta[direction].searchLabel}</span>
+        <button type="button" className="ticket-show-all" aria-label="전체 보유 종목 보기" onClick={onOpenAllHoldings}>＋</button>
       </div>
-      <div className="trade-stock-list">
-        {options.map((stock, index) => (
-          <button type="button" className={index === 0 ? 'is-selected' : ''} key={`${direction}-${stock.name}`}>
-            <span className="trade-stock-name">
-              <strong>{stock.name}</strong>
-              <small>{stock.code}</small>
-            </span>
-            <span className="trade-stock-price">
-              <strong>{stock.value}</strong>
-              <small>{stock.detail}</small>
-            </span>
-          </button>
+      <div className="ticket-holding-preview">
+        {eligibleInstruments.slice(0, 3).map((instrument) => {
+          const quantity = direction === 'sell' ? instrument.longQuantity : instrument.shortQuantity
+          return (
+            <button
+              type="button"
+              className={instrument.code === selectedInstrument.code ? 'is-selected' : ''}
+              key={`${direction}-${instrument.code}`}
+              onClick={() => onSelectInstrument(instrument)}
+            >
+              <span><strong>{instrument.name}</strong><small>{direction === 'sell' ? 'Long' : 'Short'} · {quantity}주</small></span>
+              <span><strong>{formatWon(instrument.price)}</strong><small className={instrument.change >= 0 ? 'is-positive' : 'is-negative'}>{instrument.change >= 0 ? '+' : ''}{instrument.change}%</small></span>
+            </button>
+          )
+        })}
+      </div>
+    </section>
+  )
+}
+
+function QuoteAndCapacity({
+  direction,
+  instrument,
+  maxQuantity,
+}: {
+  direction: TradeDirection
+  instrument: Instrument
+  maxQuantity: number
+}) {
+  const quantityLabel = direction === 'sell'
+    ? '매도 가능'
+    : direction === 'cover'
+      ? '상환 가능'
+      : direction === 'short'
+        ? '공매도 가능'
+        : '최대 주문'
+
+  return (
+    <>
+      <div className="ticket-quote-row">
+        <span><strong>{instrument.name}</strong><small>{instrument.code} · 현재가</small></span>
+        <span><strong>{formatWon(instrument.price)}</strong><small className={instrument.change >= 0 ? 'is-positive' : 'is-negative'}>{instrument.change >= 0 ? '+' : ''}{instrument.change}%</small></span>
+      </div>
+      <div className="ticket-capacity-grid">
+        <span><small>현재 현금</small><strong>{formatWon(CASH_BALANCE)}</strong></span>
+        <span><small>{quantityLabel}</small><strong>{maxQuantity.toLocaleString('ko-KR')}주</strong></span>
+      </div>
+    </>
+  )
+}
+
+function OrderTypeAndPrice({
+  orderType,
+  currentPrice,
+  limitPrice,
+  onOrderTypeChange,
+  onLimitPriceChange,
+}: {
+  orderType: OrderType
+  currentPrice: number
+  limitPrice: number
+  onOrderTypeChange: (orderType: OrderType) => void
+  onLimitPriceChange: (price: number) => void
+}) {
+  const limitDifference = ((limitPrice - currentPrice) / currentPrice) * 100
+
+  return (
+    <section className="ticket-order-type-section">
+      <div className="ticket-order-type-heading">
+        <span className="ticket-section-label">가격 방식</span>
+        <div className="ticket-order-type-tabs" aria-label="주문 가격 방식">
+          <button type="button" className={orderType === 'market' ? 'is-selected' : ''} aria-pressed={orderType === 'market'} onClick={() => onOrderTypeChange('market')}>시장가</button>
+          <button type="button" className={orderType === 'limit' ? 'is-selected' : ''} aria-pressed={orderType === 'limit'} onClick={() => onOrderTypeChange('limit')}>지정가</button>
+        </div>
+      </div>
+      {orderType === 'market' ? (
+        <div className="ticket-market-note"><span>현재가</span><strong>{formatWon(currentPrice)}</strong><small>빠른 체결을 우선하며 실제 체결가는 달라질 수 있어요.</small></div>
+      ) : (
+        <div className="ticket-limit-price">
+          <button type="button" aria-label="지정가 한 호가 내리기" onClick={() => onLimitPriceChange(Math.max(100, limitPrice - 100))}>−</button>
+          <label>
+            <span>지정 가격</span>
+            <input
+              type="text"
+              inputMode="numeric"
+              aria-label="지정 가격"
+              value={limitPrice.toLocaleString('ko-KR')}
+              onChange={(event) => {
+                const nextPrice = Number(event.target.value.replace(/[^0-9]/g, ''))
+                if (Number.isFinite(nextPrice)) onLimitPriceChange(nextPrice)
+              }}
+            />
+          </label>
+          <button type="button" aria-label="지정가 한 호가 올리기" onClick={() => onLimitPriceChange(limitPrice + 100)}>＋</button>
+          <small>현재가 대비 {limitDifference >= 0 ? '+' : ''}{limitDifference.toFixed(2)}%</small>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function QuantityControl({
+  quantity,
+  maxQuantity,
+  selectedPercent,
+  quantityBasis,
+  onQuantityChange,
+  onPercentSelect,
+}: {
+  quantity: number
+  maxQuantity: number
+  selectedPercent: number | null
+  quantityBasis: string
+  onQuantityChange: (quantity: number) => void
+  onPercentSelect: (percent: number) => void
+}) {
+  return (
+    <section className="ticket-quantity-section">
+      <div className="ticket-quantity-heading">
+        <span className="ticket-section-label">수량</span>
+        <small>{quantityBasis}</small>
+      </div>
+      <div className="ticket-quantity-input">
+        <button type="button" aria-label="수량 줄이기" onClick={() => onQuantityChange(Math.max(1, quantity - 1))}>−</button>
+        <label>
+          <span className="sr-only">주문 수량</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            aria-label="주문 수량"
+            value={quantity.toLocaleString('ko-KR')}
+            onChange={(event) => {
+              const nextQuantity = Number(event.target.value.replace(/[^0-9]/g, ''))
+              if (Number.isFinite(nextQuantity)) onQuantityChange(Math.max(1, Math.min(maxQuantity, nextQuantity)))
+            }}
+          />
+          <small>주</small>
+        </label>
+        <button type="button" aria-label="수량 늘리기" onClick={() => onQuantityChange(Math.min(maxQuantity, quantity + 1))}>＋</button>
+      </div>
+      <div className="ticket-allocation-buttons" aria-label="주문 비중 선택">
+        {[10, 25, 50, 100].map((percent) => (
+          <button type="button" className={selectedPercent === percent ? 'is-selected' : ''} aria-pressed={selectedPercent === percent} key={percent} onClick={() => onPercentSelect(percent)}>{percent === 100 ? '최대' : `${percent}%`}</button>
         ))}
       </div>
     </section>
   )
 }
 
-function AccountStrip({ direction }: { direction: TradeDirection }) {
-  const secondary = direction === 'cover'
-    ? '상환 가능 12주'
-    : direction === 'sell'
-      ? '보유 42주'
-      : direction === 'short'
-        ? '가용 증거금 6,980,000원'
-        : '주문 가능 8,420,000원'
-
+function BalancedPrototype(props: SharedPrototypeProps) {
   return (
-    <div className="trade-account-strip">
-      <span>
-        <small>현재</small>
-        <strong>{secondary}</strong>
-      </span>
-      <span>
-        <small>주문 후 예상</small>
-        <strong>{direction === 'buy' ? '현금 7,707,000원' : direction === 'sell' ? '보유 32주' : direction === 'short' ? '숏 10주' : '숏 2주'}</strong>
-      </span>
+    <div className="ticket-prototype-stack">
+      <QuoteAndCapacity direction={props.direction} instrument={props.instrument} maxQuantity={props.maxQuantity} />
+      <OrderTypeAndPrice orderType={props.orderType} currentPrice={props.instrument.price} limitPrice={props.limitPrice} onOrderTypeChange={props.onOrderTypeChange} onLimitPriceChange={props.onLimitPriceChange} />
+      <QuantityControl quantity={props.quantity} maxQuantity={props.maxQuantity} selectedPercent={props.selectedPercent} quantityBasis={directionMeta[props.direction].quantityBasis} onQuantityChange={props.onQuantityChange} onPercentSelect={props.onPercentSelect} />
     </div>
   )
 }
 
-function OrderControls({
-  direction,
-  orderType,
-  onOrderTypeChange,
-  quantity,
-  onQuantityChange,
-  showAction = true,
-}: {
-  direction: TradeDirection
-  orderType: OrderType
-  onOrderTypeChange: (orderType: OrderType) => void
-  quantity: number
-  onQuantityChange: (quantity: number) => void
-  showAction?: boolean
-}) {
-  const estimatedValue = useMemo(() => `${(quantity * 71_300).toLocaleString('ko-KR')}원`, [quantity])
+function AllocationPrototype(props: SharedPrototypeProps) {
+  const allocationPrompt = props.direction === 'sell'
+    ? '보유 수량 중 얼마나 매도할까요?'
+    : props.direction === 'cover'
+      ? 'Short 수량 중 얼마나 상환할까요?'
+      : '주문 가능 금액 중 얼마나 사용할까요?'
 
   return (
-    <>
-      <div className="trade-order-row">
-        <span className="trade-order-label">가격 방식</span>
-        <div className="trade-order-segment" aria-label="주문 가격 방식">
-          <button type="button" className={orderType === 'market' ? 'is-selected' : ''} aria-pressed={orderType === 'market'} onClick={() => onOrderTypeChange('market')}>시장가</button>
-          <button type="button" className={orderType === 'limit' ? 'is-selected' : ''} aria-pressed={orderType === 'limit'} onClick={() => onOrderTypeChange('limit')}>지정가</button>
-        </div>
-      </div>
-      <div className="trade-order-row trade-quantity-row">
-        <span className="trade-order-label">수량</span>
-        <div className="trade-quantity-control">
-          <button type="button" aria-label="수량 줄이기" onClick={() => onQuantityChange(Math.max(1, quantity - 1))}>−</button>
-          <strong>{quantity}<small>주</small></strong>
-          <button type="button" aria-label="수량 늘리기" onClick={() => onQuantityChange(quantity + 1)}>＋</button>
-        </div>
-      </div>
-      <div className="trade-quick-amounts" aria-label="빠른 수량 선택">
-        {[10, 25, 50, 100].map((value) => (
-          <button type="button" key={value} onClick={() => onQuantityChange(value)}>{value === 100 ? '최대' : `${value}주`}</button>
-        ))}
-      </div>
-      <div className="trade-estimate">
-        <span>예상 주문금액</span>
-        <strong>{estimatedValue}</strong>
-        <small>체결 가격에 따라 달라질 수 있어요</small>
-      </div>
-      {showAction && <button type="button" className="trade-review-action">{directionMeta[direction].label} 검토하기</button>}
-    </>
-  )
-}
-
-function QuickDraft({
-  direction,
-  onDirectionChange,
-  shortAllowed,
-  orderType,
-  onOrderTypeChange,
-  quantity,
-  onQuantityChange,
-}: {
-  direction: TradeDirection
-  onDirectionChange: (direction: TradeDirection) => void
-  shortAllowed: boolean
-  orderType: OrderType
-  onOrderTypeChange: (orderType: OrderType) => void
-  quantity: number
-  onQuantityChange: (quantity: number) => void
-}) {
-  return (
-    <div className="trade-draft-scroll">
-      <div className="trade-rule-note"><span />{shortAllowed ? '이 대회는 공매도를 허용합니다' : '이 대회는 Long 거래만 허용합니다'}</div>
-      <DirectionSelector direction={direction} onChange={onDirectionChange} shortAllowed={shortAllowed} />
-      <StockPicker direction={direction} />
-      <AccountStrip direction={direction} />
-      <OrderControls direction={direction} orderType={orderType} onOrderTypeChange={onOrderTypeChange} quantity={quantity} onQuantityChange={onQuantityChange} />
-    </div>
-  )
-}
-
-function PositionDraft({
-  direction,
-  onDirectionChange,
-  shortAllowed,
-  orderType,
-  onOrderTypeChange,
-  quantity,
-  onQuantityChange,
-}: {
-  direction: TradeDirection
-  onDirectionChange: (direction: TradeDirection) => void
-  shortAllowed: boolean
-  orderType: OrderType
-  onOrderTypeChange: (orderType: OrderType) => void
-  quantity: number
-  onQuantityChange: (quantity: number) => void
-}) {
-  return (
-    <div className="trade-draft-scroll">
-      <div className="trade-position-summary">
-        <span><small>현금</small><strong>8,420,000원</strong></span>
-        <span><small>Long</small><strong>3종목</strong></span>
-        <span><small>Short</small><strong>1종목</strong></span>
-      </div>
-      <section className="trade-field-group">
-        <div className="trade-field-heading"><strong>현재 포지션에서 시작</strong><button type="button">전체</button></div>
-        <div className="trade-position-list">
-          <button type="button" className="is-selected">
-            <span><strong>삼성전자</strong><small>Long · 42주</small></span>
-            <span><strong>+8.4%</strong><small>+232,100원</small></span>
-          </button>
-          <button type="button">
-            <span><strong>에코프로</strong><small>Short · 12주</small></span>
-            <span><strong>+3.1%</strong><small>+34,800원</small></span>
-          </button>
+    <div className="ticket-prototype-stack ticket-allocation-prototype">
+      <QuoteAndCapacity direction={props.direction} instrument={props.instrument} maxQuantity={props.maxQuantity} />
+      <section className="ticket-allocation-focus">
+        <span className="ticket-section-label">{allocationPrompt}</span>
+        <div className="ticket-allocation-cards">
+          {[10, 25, 50, 100].map((percent) => {
+            const shares = Math.max(1, Math.floor(props.maxQuantity * percent / 100))
+            return (
+              <button type="button" className={props.selectedPercent === percent ? 'is-selected' : ''} aria-pressed={props.selectedPercent === percent} key={percent} onClick={() => props.onPercentSelect(percent)}>
+                <strong>{percent === 100 ? '최대' : `${percent}%`}</strong>
+                <span>{shares.toLocaleString('ko-KR')}주</span>
+                <small>{formatWon(shares * props.effectivePrice)}</small>
+              </button>
+            )
+          })}
         </div>
       </section>
-      <div className="trade-position-prompt">선택한 포지션을 어떻게 바꿀까요?</div>
-      <DirectionSelector direction={direction} onChange={onDirectionChange} shortAllowed={shortAllowed} compact />
-      <AccountStrip direction={direction} />
-      <OrderControls direction={direction} orderType={orderType} onOrderTypeChange={onOrderTypeChange} quantity={quantity} onQuantityChange={onQuantityChange} />
+      <div className="ticket-derived-quantity">
+        <span><small>선택 수량</small><strong>{props.quantity.toLocaleString('ko-KR')}주</strong></span>
+        <div aria-label="선택 수량 미세 조정">
+          <button type="button" aria-label="선택 수량 줄이기" onClick={() => props.onQuantityChange(Math.max(1, props.quantity - 1))}>−</button>
+          <button type="button" aria-label="선택 수량 늘리기" onClick={() => props.onQuantityChange(Math.min(props.maxQuantity, props.quantity + 1))}>＋</button>
+        </div>
+      </div>
+      <OrderTypeAndPrice orderType={props.orderType} currentPrice={props.instrument.price} limitPrice={props.limitPrice} onOrderTypeChange={props.onOrderTypeChange} onLimitPriceChange={props.onLimitPriceChange} />
     </div>
   )
 }
 
-function GuidedDraft({
+function OutcomePrototype(props: SharedPrototypeProps) {
+  const cashDelta = props.direction === 'sell' || props.direction === 'short'
+    ? props.estimatedAmount
+    : -props.estimatedAmount
+  const currentPosition = props.direction === 'short' || props.direction === 'cover'
+    ? props.instrument.shortQuantity ?? 0
+    : props.instrument.longQuantity ?? 0
+  const positionAfter = props.direction === 'buy'
+    ? currentPosition + props.quantity
+    : props.direction === 'sell'
+      ? Math.max(0, currentPosition - props.quantity)
+      : props.direction === 'short'
+        ? (props.instrument.shortQuantity ?? 0) + props.quantity
+        : Math.max(0, currentPosition - props.quantity)
+
+  return (
+    <div className="ticket-prototype-stack ticket-outcome-prototype">
+      <QuoteAndCapacity direction={props.direction} instrument={props.instrument} maxQuantity={props.maxQuantity} />
+      <section className="ticket-outcome-preview">
+        <div className="ticket-section-label">주문 후 예상</div>
+        <div>
+          <span><small>현금</small><strong>{formatWon(CASH_BALANCE)}</strong></span>
+          <b aria-hidden="true">→</b>
+          <span><small>예상 현금</small><strong>{formatWon(CASH_BALANCE + cashDelta)}</strong></span>
+        </div>
+        <div>
+          <span><small>{props.direction === 'short' || props.direction === 'cover' ? 'Short' : '보유'}</small><strong>{currentPosition}주</strong></span>
+          <b aria-hidden="true">→</b>
+          <span><small>주문 후</small><strong>{positionAfter}주</strong></span>
+        </div>
+      </section>
+      <OrderTypeAndPrice orderType={props.orderType} currentPrice={props.instrument.price} limitPrice={props.limitPrice} onOrderTypeChange={props.onOrderTypeChange} onLimitPriceChange={props.onLimitPriceChange} />
+      <QuantityControl quantity={props.quantity} maxQuantity={props.maxQuantity} selectedPercent={props.selectedPercent} quantityBasis={directionMeta[props.direction].quantityBasis} onQuantityChange={props.onQuantityChange} onPercentSelect={props.onPercentSelect} />
+    </div>
+  )
+}
+
+type SharedPrototypeProps = {
+  direction: TradeDirection
+  instrument: Instrument
+  maxQuantity: number
+  orderType: OrderType
+  limitPrice: number
+  effectivePrice: number
+  quantity: number
+  selectedPercent: number | null
+  estimatedAmount: number
+  onOrderTypeChange: (orderType: OrderType) => void
+  onLimitPriceChange: (price: number) => void
+  onQuantityChange: (quantity: number) => void
+  onPercentSelect: (percent: number) => void
+}
+
+function HoldingsPicker({
   direction,
-  onDirectionChange,
-  shortAllowed,
-  step,
-  onStepChange,
-  orderType,
-  onOrderTypeChange,
-  quantity,
-  onQuantityChange,
+  selectedInstrument,
+  onSelect,
+  onClose,
 }: {
   direction: TradeDirection
-  onDirectionChange: (direction: TradeDirection) => void
-  shortAllowed: boolean
-  step: number
-  onStepChange: (step: number) => void
-  orderType: OrderType
-  onOrderTypeChange: (orderType: OrderType) => void
-  quantity: number
-  onQuantityChange: (quantity: number) => void
+  selectedInstrument: Instrument
+  onSelect: (instrument: Instrument) => void
+  onClose: () => void
 }) {
+  const holdings = direction === 'sell'
+    ? instruments.filter((instrument) => instrument.longQuantity)
+    : instruments.filter((instrument) => instrument.shortQuantity)
+
   return (
-    <div className="trade-guided-draft">
-      <div className="trade-stepper" aria-label={`3단계 중 ${step}단계`}>
-        {[1, 2, 3].map((item) => <span className={item <= step ? 'is-active' : ''} key={item} />)}
-      </div>
-      <div className="trade-guided-scroll" aria-live="polite">
-        {step === 1 && (
-          <section className="trade-guided-step">
-            <small>1 · 방향</small>
-            <h3>어떤 포지션을 만들까요?</h3>
-            <p>용어보다 결과를 먼저 보고 선택하세요.</p>
-            <DirectionSelector direction={direction} onChange={onDirectionChange} shortAllowed={shortAllowed} />
-            <div className="trade-direction-explanation">
-              <strong>{directionMeta[direction].label}</strong>
-              <span>{directionMeta[direction].helper}</span>
-            </div>
-          </section>
-        )}
-        {step === 2 && (
-          <section className="trade-guided-step">
-            <small>2 · 종목</small>
-            <h3>{directionMeta[direction].sourceTitle}에서 선택</h3>
-            <p>현재 선택과 맞지 않는 종목은 처음부터 숨깁니다.</p>
-            <StockPicker direction={direction} />
-          </section>
-        )}
-        {step === 3 && (
-          <section className="trade-guided-step">
-            <small>3 · 주문</small>
-            <h3>수량과 주문 방식을 확인하세요</h3>
-            <AccountStrip direction={direction} />
-            <OrderControls direction={direction} orderType={orderType} onOrderTypeChange={onOrderTypeChange} quantity={quantity} onQuantityChange={onQuantityChange} showAction={false} />
-          </section>
-        )}
-      </div>
-      <div className="trade-guided-footer">
-        <button type="button" className="trade-guided-back" disabled={step === 1} onClick={() => onStepChange(Math.max(1, step - 1))}>이전</button>
-        {step < 3
-          ? <button type="button" className="trade-guided-next" onClick={() => onStepChange(Math.min(3, step + 1))}>다음</button>
-          : <button type="button" className="trade-guided-next">{directionMeta[direction].label} 검토하기</button>}
-      </div>
+    <div className="ticket-picker-layer">
+      <button type="button" className="ticket-picker-backdrop" aria-label="보유 종목 목록 닫기" onClick={onClose} />
+      <section className="ticket-picker-sheet" role="dialog" aria-modal="true" aria-label={directionMeta[direction].searchLabel}>
+        <div className="ticket-picker-grabber" />
+        <header><strong>{directionMeta[direction].searchLabel}</strong><span>{holdings.length}개</span></header>
+        <div className="ticket-picker-list">
+          {holdings.map((instrument) => (
+            <button type="button" className={instrument.code === selectedInstrument.code ? 'is-selected' : ''} key={instrument.code} onClick={() => { onSelect(instrument); onClose() }}>
+              <span><strong>{instrument.name}</strong><small>{instrument.code}</small></span>
+              <span><strong>{direction === 'sell' ? instrument.longQuantity : instrument.shortQuantity}주</strong><small>{formatWon(instrument.price)}</small></span>
+            </button>
+          ))}
+        </div>
+      </section>
     </div>
   )
 }
 
 export default function TradeDrafts({ shortAllowed = true }: { shortAllowed?: boolean }) {
-  const [draft, setDraft] = useState<TradeDraft>('quick')
+  const [prototype, setPrototype] = useState<TicketPrototype>('balanced')
   const [direction, setDirection] = useState<TradeDirection>('buy')
+  const [selectedInstrument, setSelectedInstrument] = useState<Instrument>(instruments[0])
+  const [searchQuery, setSearchQuery] = useState(instruments[0].name)
+  const [searchFocused, setSearchFocused] = useState(false)
   const [orderType, setOrderType] = useState<OrderType>('market')
+  const [limitPrice, setLimitPrice] = useState(instruments[0].price)
   const [quantity, setQuantity] = useState(10)
-  const [guidedStep, setGuidedStep] = useState(1)
+  const [selectedPercent, setSelectedPercent] = useState<number | null>(null)
+  const [isHoldingsPickerOpen, setIsHoldingsPickerOpen] = useState(false)
 
-  const selectDraft = (nextDraft: TradeDraft) => {
-    setDraft(nextDraft)
-    setDirection(nextDraft === 'position' ? 'sell' : 'buy')
-    if (nextDraft === 'guided') setGuidedStep(1)
+  const effectivePrice = orderType === 'market' ? selectedInstrument.price : limitPrice
+
+  const maxQuantity = useMemo(() => {
+    if (direction === 'sell') return selectedInstrument.longQuantity ?? 0
+    if (direction === 'cover') return selectedInstrument.shortQuantity ?? 0
+    return Math.max(1, Math.floor(CASH_BALANCE / Math.max(1, effectivePrice)))
+  }, [direction, effectivePrice, selectedInstrument])
+
+  const estimatedAmount = effectivePrice * quantity
+
+  useEffect(() => {
+    setQuantity((currentQuantity) => Math.max(1, Math.min(maxQuantity, currentQuantity)))
+  }, [maxQuantity])
+
+  const selectInstrument = (instrument: Instrument) => {
+    setSelectedInstrument(instrument)
+    setSearchQuery(instrument.name)
+    setLimitPrice(instrument.price)
+    setQuantity(1)
+    setSelectedPercent(null)
+  }
+
+  const selectDirection = (nextDirection: TradeDirection) => {
+    const nextInstrument = nextDirection === 'sell'
+      ? instruments.find((instrument) => instrument.longQuantity) ?? instruments[0]
+      : nextDirection === 'cover'
+        ? instruments.find((instrument) => instrument.shortQuantity) ?? instruments[0]
+        : nextDirection === 'short'
+          ? instruments.find((instrument) => instrument.name === '에코프로') ?? instruments[0]
+          : instruments[0]
+
+    setDirection(nextDirection)
+    setOrderType('market')
+    setSelectedInstrument(nextInstrument)
+    setSearchQuery(nextInstrument.name)
+    setLimitPrice(nextInstrument.price)
+    setQuantity(1)
+    setSelectedPercent(null)
+  }
+
+  const changeQuantity = (nextQuantity: number) => {
+    setQuantity(Math.max(1, Math.min(maxQuantity, nextQuantity)))
+    setSelectedPercent(null)
+  }
+
+  const selectPercent = (percent: number) => {
+    setSelectedPercent(percent)
+    setQuantity(Math.max(1, Math.floor(maxQuantity * percent / 100)))
+  }
+
+  const sharedPrototypeProps: SharedPrototypeProps = {
+    direction,
+    instrument: selectedInstrument,
+    maxQuantity,
+    orderType,
+    limitPrice,
+    effectivePrice,
+    quantity,
+    selectedPercent,
+    estimatedAmount,
+    onOrderTypeChange: setOrderType,
+    onLimitPriceChange: setLimitPrice,
+    onQuantityChange: changeQuantity,
+    onPercentSelect: selectPercent,
   }
 
   return (
-    <div className="trade-drafts">
-      <div className="trade-draft-tabs" role="tablist" aria-label="매매 UI 초안">
-        {draftTabs.map((tab) => (
-          <button
-            type="button"
-            role="tab"
-            aria-selected={draft === tab.key}
-            className={draft === tab.key ? 'is-selected' : ''}
-            key={tab.key}
-            onClick={() => selectDraft(tab.key)}
-          >
-            {tab.label}
-          </button>
+    <div className="ticket-prototypes">
+      <div className="ticket-prototype-switcher" role="tablist" aria-label="A형 세부 초안">
+        {prototypeOptions.map((option) => (
+          <button type="button" role="tab" aria-selected={prototype === option.key} className={prototype === option.key ? 'is-selected' : ''} key={option.key} onClick={() => setPrototype(option.key)}>{option.label}</button>
         ))}
       </div>
-      <div className="trade-draft-panel" role="tabpanel">
-        {draft === 'quick' && (
-          <QuickDraft direction={direction} onDirectionChange={setDirection} shortAllowed={shortAllowed} orderType={orderType} onOrderTypeChange={setOrderType} quantity={quantity} onQuantityChange={setQuantity} />
-        )}
-        {draft === 'position' && (
-          <PositionDraft direction={direction} onDirectionChange={setDirection} shortAllowed={shortAllowed} orderType={orderType} onOrderTypeChange={setOrderType} quantity={quantity} onQuantityChange={setQuantity} />
-        )}
-        {draft === 'guided' && (
-          <GuidedDraft direction={direction} onDirectionChange={setDirection} shortAllowed={shortAllowed} step={guidedStep} onStepChange={setGuidedStep} orderType={orderType} onOrderTypeChange={setOrderType} quantity={quantity} onQuantityChange={setQuantity} />
-        )}
+      <div className="ticket-scroll-area">
+        <DirectionTabs direction={direction} onChange={selectDirection} shortAllowed={shortAllowed} />
+        <InstrumentAccess direction={direction} selectedInstrument={selectedInstrument} searchQuery={searchQuery} searchFocused={searchFocused} onSearchQueryChange={setSearchQuery} onSearchFocusChange={setSearchFocused} onSelectInstrument={selectInstrument} onOpenAllHoldings={() => setIsHoldingsPickerOpen(true)} />
+        {prototype === 'balanced' && <BalancedPrototype {...sharedPrototypeProps} />}
+        {prototype === 'allocation' && <AllocationPrototype {...sharedPrototypeProps} />}
+        {prototype === 'outcome' && <OutcomePrototype {...sharedPrototypeProps} />}
       </div>
+      <footer className="ticket-sticky-footer">
+        <span><small>예상 주문금액</small><strong>{formatWon(estimatedAmount)}</strong></span>
+        <button type="button">{directionMeta[direction].label} 검토하기</button>
+      </footer>
+      {isHoldingsPickerOpen && (
+        <HoldingsPicker direction={direction} selectedInstrument={selectedInstrument} onSelect={selectInstrument} onClose={() => setIsHoldingsPickerOpen(false)} />
+      )}
     </div>
   )
 }
