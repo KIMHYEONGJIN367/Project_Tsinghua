@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import investBattery from './assets/invest-ios-battery.svg'
 import investHome from './assets/invest-home.svg'
 import investMessage from './assets/invest-message.svg'
@@ -475,9 +475,15 @@ function ChatRoomScreen({
 }) {
   const [messageDraft, setMessageDraft] = useState('')
   const [isTradeSheetOpen, setIsTradeSheetOpen] = useState(false)
+  const [isTradeSheetDragging, setIsTradeSheetDragging] = useState(false)
+  const [tradeSheetDragY, setTradeSheetDragY] = useState(0)
   const messageInputRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const tradeSheetCloseRef = useRef<HTMLButtonElement>(null)
+  const tradeSheetRef = useRef<HTMLElement>(null)
+  const tradeSheetDragStartYRef = useRef<number | null>(null)
+  const tradeSheetDragYRef = useRef(0)
+  const tradeSheetDismissTimerRef = useRef<number | null>(null)
+  const chatSwipeStartYRef = useRef<number | null>(null)
   const canSendMessage = messageDraft.trim().length > 0
 
   useEffect(() => {
@@ -489,9 +495,14 @@ function ChatRoomScreen({
   useEffect(() => {
     if (!isTradeSheetOpen) return
 
-    const focusFrame = window.requestAnimationFrame(() => tradeSheetCloseRef.current?.focus())
+    const focusFrame = window.requestAnimationFrame(() => tradeSheetRef.current?.focus())
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setIsTradeSheetOpen(false)
+      if (event.key === 'Escape') {
+        setIsTradeSheetOpen(false)
+        setIsTradeSheetDragging(false)
+        setTradeSheetDragY(0)
+        tradeSheetDragYRef.current = 0
+      }
     }
 
     window.addEventListener('keydown', closeOnEscape)
@@ -501,6 +512,64 @@ function ChatRoomScreen({
     }
   }, [isTradeSheetOpen])
 
+  useEffect(() => () => {
+    if (tradeSheetDismissTimerRef.current !== null) {
+      window.clearTimeout(tradeSheetDismissTimerRef.current)
+    }
+  }, [])
+
+  useEffect(() => {
+    const moveTradeSheet = (event: PointerEvent) => {
+      if (tradeSheetDragStartYRef.current === null) return
+
+      const nextDragY = Math.max(0, event.clientY - tradeSheetDragStartYRef.current)
+      tradeSheetDragYRef.current = nextDragY
+      setTradeSheetDragY(nextDragY)
+    }
+
+    const finishTradeSheetDrag = () => {
+      if (tradeSheetDragStartYRef.current === null) return
+
+      tradeSheetDragStartYRef.current = null
+      setIsTradeSheetDragging(false)
+
+      const sheetHeight = tradeSheetRef.current?.getBoundingClientRect().height ?? 0
+      const dismissThreshold = Math.min(96, sheetHeight * 0.18)
+
+      if (tradeSheetDragYRef.current >= dismissThreshold) {
+        setTradeSheetDragY(sheetHeight)
+        tradeSheetDragYRef.current = sheetHeight
+        tradeSheetDismissTimerRef.current = window.setTimeout(() => {
+          setIsTradeSheetOpen(false)
+          setTradeSheetDragY(0)
+          tradeSheetDragYRef.current = 0
+          tradeSheetDismissTimerRef.current = null
+        }, 200)
+        return
+      }
+
+      setTradeSheetDragY(0)
+      tradeSheetDragYRef.current = 0
+    }
+
+    const cancelTradeSheetDrag = () => {
+      if (tradeSheetDragStartYRef.current === null) return
+      tradeSheetDragStartYRef.current = null
+      tradeSheetDragYRef.current = 0
+      setIsTradeSheetDragging(false)
+      setTradeSheetDragY(0)
+    }
+
+    window.addEventListener('pointermove', moveTradeSheet)
+    window.addEventListener('pointerup', finishTradeSheetDrag)
+    window.addEventListener('pointercancel', cancelTradeSheetDrag)
+    return () => {
+      window.removeEventListener('pointermove', moveTradeSheet)
+      window.removeEventListener('pointerup', finishTradeSheetDrag)
+      window.removeEventListener('pointercancel', cancelTradeSheetDrag)
+    }
+  }, [])
+
   const sendMessage = () => {
     const message = messageDraft.trim()
     if (!message) return
@@ -508,6 +577,26 @@ function ChatRoomScreen({
     onSendMessage(message)
     setMessageDraft('')
     messageInputRef.current?.focus()
+  }
+
+  const openTradeSheet = () => {
+    setIsTradeSheetDragging(false)
+    setTradeSheetDragY(0)
+    tradeSheetDragYRef.current = 0
+    setIsTradeSheetOpen(true)
+  }
+
+  const closeTradeSheet = () => {
+    setIsTradeSheetOpen(false)
+    setIsTradeSheetDragging(false)
+    setTradeSheetDragY(0)
+    tradeSheetDragYRef.current = 0
+  }
+
+  const startTradeSheetDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    tradeSheetDragStartYRef.current = event.clientY
+    setIsTradeSheetDragging(true)
   }
 
   return (
@@ -533,7 +622,29 @@ function ChatRoomScreen({
           <strong>2026.08.31 23:59</strong>
         </div>
         <div className="chat-date-divider">오늘, 2026년 2월 24일</div>
-        <section id="chat-message-list" className="chat-messages" aria-label="대화 내용" aria-live="polite">
+        <section
+          id="chat-message-list"
+          className="chat-messages"
+          aria-label="대화 내용"
+          aria-live="polite"
+          onPointerDown={(event) => {
+            chatSwipeStartYRef.current = event.clientY
+          }}
+          onPointerUp={(event) => {
+            const startY = chatSwipeStartYRef.current
+            chatSwipeStartYRef.current = null
+            if (
+              startY !== null
+              && event.clientY - startY >= 48
+              && document.activeElement === messageInputRef.current
+            ) {
+              messageInputRef.current?.blur()
+            }
+          }}
+          onPointerCancel={() => {
+            chatSwipeStartYRef.current = null
+          }}
+        >
           <article className="chat-message incoming">
             <img src={friendsProfile} alt="장우진" width="32" height="32" />
             <div>
@@ -602,7 +713,7 @@ function ChatRoomScreen({
             if (canSendMessage) sendMessage()
             else {
               messageInputRef.current?.blur()
-              setIsTradeSheetOpen(true)
+              openTradeSheet()
             }
           }}
         >
@@ -618,28 +729,29 @@ function ChatRoomScreen({
             type="button"
             className="trade-sheet-backdrop"
             aria-label="매매 화면 닫기"
-            onClick={() => setIsTradeSheetOpen(false)}
+            onClick={closeTradeSheet}
           />
-          <section className="trade-sheet" role="dialog" aria-modal="true" aria-labelledby="trade-sheet-title">
-            <div className="trade-sheet-grabber" aria-hidden="true" />
-            <header className="trade-sheet-header">
-              <div>
-                <span>주문</span>
-                <h2 id="trade-sheet-title">매매</h2>
-              </div>
-              <button
-                ref={tradeSheetCloseRef}
-                type="button"
-                className="trade-sheet-close"
-                aria-label="매매 화면 닫기"
-                onClick={() => setIsTradeSheetOpen(false)}
+          <section ref={tradeSheetRef} className="trade-sheet" role="dialog" aria-modal="true" aria-label="매매 화면" tabIndex={-1}>
+            <div
+              className={`trade-sheet-surface ${isTradeSheetDragging ? 'is-dragging' : ''}`}
+              style={{ transform: `translateY(${tradeSheetDragY}px)` }}
+            >
+              <div
+                className="trade-sheet-drag-zone"
+                role="button"
+                tabIndex={0}
+                aria-label="아래로 드래그하여 매매 화면 닫기"
+                onPointerDown={startTradeSheetDrag}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+                    event.preventDefault()
+                    closeTradeSheet()
+                  }
+                }}
               >
-                ×
-              </button>
-            </header>
-            <div className="trade-sheet-canvas">
-              <strong>매매 UI 영역</strong>
-              <span>화면 높이의 75%</span>
+                <div className="trade-sheet-grabber" aria-hidden="true" />
+              </div>
+              <div className="trade-sheet-canvas" />
             </div>
           </section>
         </div>
