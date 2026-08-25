@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import TradeDrafts from './TradeDrafts'
 import investBattery from './assets/invest-ios-battery.svg'
 import investHome from './assets/invest-home.svg'
 import investMessage from './assets/invest-message.svg'
@@ -751,7 +752,9 @@ function ChatRoomScreen({
               >
                 <div className="trade-sheet-grabber" aria-hidden="true" />
               </div>
-              <div className="trade-sheet-canvas" />
+              <div className="trade-sheet-canvas">
+                <TradeDrafts shortAllowed />
+              </div>
             </div>
           </section>
         </div>
