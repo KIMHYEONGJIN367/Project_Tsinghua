@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import investBattery from './assets/invest-ios-battery.svg'
 import investHome from './assets/invest-home.svg'
 import investMessage from './assets/invest-message.svg'
@@ -28,6 +28,12 @@ type FeedMode = 'invest' | 'friends'
 type InvestCardVariant = 'default' | 'compact' | 'scoreboard'
 type ScreenKey = 'home' | 'chat-list' | 'chat-room' | 'splash'
 type NavKey = 'home' | 'chat' | 'invest' | 'portfolio' | 'my'
+
+type SentMessage = {
+  id: string
+  text: string
+  sentAt: string
+}
 
 type FeedIcons = {
   signal: string
@@ -458,7 +464,35 @@ function ChatListScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => voi
   )
 }
 
-function ChatRoomScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
+function ChatRoomScreen({
+  onNavigate,
+  sentMessages,
+  onSendMessage,
+}: {
+  onNavigate: (screen: ScreenKey) => void
+  sentMessages: SentMessage[]
+  onSendMessage: (message: string) => void
+}) {
+  const [messageDraft, setMessageDraft] = useState('')
+  const messageInputRef = useRef<HTMLTextAreaElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const canSendMessage = messageDraft.trim().length > 0
+
+  useEffect(() => {
+    if (sentMessages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }
+  }, [sentMessages])
+
+  const sendMessage = () => {
+    const message = messageDraft.trim()
+    if (!message) return
+
+    onSendMessage(message)
+    setMessageDraft('')
+    messageInputRef.current?.focus()
+  }
+
   return (
     <main className="app-shell chat-shell chat-room-shell" data-name="chat-room" data-node-id="2:242">
       <div className="chat-top-container chat-room-screen">
@@ -482,7 +516,7 @@ function ChatRoomScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => voi
           <strong>2026.08.31 23:59</strong>
         </div>
         <div className="chat-date-divider">오늘, 2026년 2월 24일</div>
-        <section className="chat-messages" aria-label="대화 내용">
+        <section id="chat-message-list" className="chat-messages" aria-label="대화 내용" aria-live="polite">
           <article className="chat-message incoming">
             <img src={friendsProfile} alt="장우진" width="32" height="32" />
             <div>
@@ -511,12 +545,49 @@ function ChatRoomScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => voi
             <p>잘 먹고 갑니다 ㅋㅋㅋㅋㅋ</p>
             <time>오후 9:43</time>
           </article>
+          {sentMessages.map((message) => (
+            <article className="chat-message outgoing" key={message.id}>
+              <p>{message.text}</p>
+              <time>{message.sentAt}</time>
+            </article>
+          ))}
+          <div ref={messagesEndRef} aria-hidden="true" />
         </section>
       </div>
       <div className="chat-composer">
         <button type="button" aria-label="첨부">＋</button>
-        <div>메시지를 입력하세요...</div>
-        <button type="button" className="chat-send-button">매매</button>
+        <textarea
+          ref={messageInputRef}
+          value={messageDraft}
+          rows={1}
+          maxLength={500}
+          inputMode="text"
+          enterKeyHint="send"
+          aria-label="메시지 입력"
+          aria-controls="chat-message-list"
+          placeholder="메시지를 입력하세요..."
+          onChange={(event) => setMessageDraft(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+              event.preventDefault()
+              sendMessage()
+            }
+          }}
+        />
+        <button
+          type="button"
+          className={`chat-send-button ${canSendMessage ? 'is-message-send' : 'is-trade'}`}
+          aria-label={canSendMessage ? '메시지 전송' : '매매 주문 열기'}
+          onPointerDown={(event) => {
+            if (canSendMessage) event.preventDefault()
+          }}
+          onClick={() => {
+            if (canSendMessage) sendMessage()
+            else messageInputRef.current?.blur()
+          }}
+        >
+          {canSendMessage ? '전송' : '매매'}
+        </button>
       </div>
       <div className="feed-bottom">
         <HomeIndicator />
@@ -578,6 +649,7 @@ function HomeFeed({ mode, onModeChange, cardVariant, onNavigate }: { mode: FeedM
 
 export default function App() {
   const [mode, setMode] = useState<FeedMode>('invest')
+  const [sentMessages, setSentMessages] = useState<SentMessage[]>([])
   const [screen, setScreen] = useState<ScreenKey>(() => {
     if (typeof window === 'undefined') return 'home'
     const requestedScreen = new URLSearchParams(window.location.search).get('screen')
@@ -594,8 +666,23 @@ export default function App() {
     window.history.pushState({}, '', query ? `/?${query}` : '/')
   }
 
+  const sendChatMessage = (message: string) => {
+    const now = new Date()
+    const hour = now.getHours()
+    const period = hour < 12 ? '오전' : '오후'
+    const displayHour = hour % 12 || 12
+    const sentAt = `${period} ${displayHour}:${String(now.getMinutes()).padStart(2, '0')}`
+
+    setSentMessages((currentMessages) => [
+      ...currentMessages,
+      { id: crypto.randomUUID(), text: message, sentAt },
+    ])
+  }
+
   if (screen === 'chat-list') return <ChatListScreen onNavigate={navigate} />
-  if (screen === 'chat-room') return <ChatRoomScreen onNavigate={navigate} />
+  if (screen === 'chat-room') {
+    return <ChatRoomScreen onNavigate={navigate} sentMessages={sentMessages} onSendMessage={sendChatMessage} />
+  }
   if (screen === 'splash') return <SplashScreen />
   return <HomeFeed mode={mode} onModeChange={setMode} cardVariant={getInvestCardVariant()} onNavigate={navigate} />
 }
