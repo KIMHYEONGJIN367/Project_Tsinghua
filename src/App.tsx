@@ -474,8 +474,10 @@ function ChatRoomScreen({
   onSendMessage: (message: string) => void
 }) {
   const [messageDraft, setMessageDraft] = useState('')
+  const [isTradeSheetOpen, setIsTradeSheetOpen] = useState(false)
   const messageInputRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const tradeSheetCloseRef = useRef<HTMLButtonElement>(null)
   const canSendMessage = messageDraft.trim().length > 0
 
   useEffect(() => {
@@ -483,6 +485,21 @@ function ChatRoomScreen({
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
     }
   }, [sentMessages])
+
+  useEffect(() => {
+    if (!isTradeSheetOpen) return
+
+    const focusFrame = window.requestAnimationFrame(() => tradeSheetCloseRef.current?.focus())
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsTradeSheetOpen(false)
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    return () => {
+      window.cancelAnimationFrame(focusFrame)
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [isTradeSheetOpen])
 
   const sendMessage = () => {
     const message = messageDraft.trim()
@@ -583,7 +600,10 @@ function ChatRoomScreen({
           }}
           onClick={() => {
             if (canSendMessage) sendMessage()
-            else messageInputRef.current?.blur()
+            else {
+              messageInputRef.current?.blur()
+              setIsTradeSheetOpen(true)
+            }
           }}
         >
           {canSendMessage ? '전송' : '매매'}
@@ -592,6 +612,38 @@ function ChatRoomScreen({
       <div className="feed-bottom">
         <HomeIndicator />
       </div>
+      {isTradeSheetOpen && (
+        <div className="trade-sheet-layer">
+          <button
+            type="button"
+            className="trade-sheet-backdrop"
+            aria-label="매매 화면 닫기"
+            onClick={() => setIsTradeSheetOpen(false)}
+          />
+          <section className="trade-sheet" role="dialog" aria-modal="true" aria-labelledby="trade-sheet-title">
+            <div className="trade-sheet-grabber" aria-hidden="true" />
+            <header className="trade-sheet-header">
+              <div>
+                <span>주문</span>
+                <h2 id="trade-sheet-title">매매</h2>
+              </div>
+              <button
+                ref={tradeSheetCloseRef}
+                type="button"
+                className="trade-sheet-close"
+                aria-label="매매 화면 닫기"
+                onClick={() => setIsTradeSheetOpen(false)}
+              >
+                ×
+              </button>
+            </header>
+            <div className="trade-sheet-canvas">
+              <strong>매매 UI 영역</strong>
+              <span>화면 높이의 75%</span>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   )
 }
