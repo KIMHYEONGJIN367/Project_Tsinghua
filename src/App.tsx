@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { PortfolioSheet, RankingSheet } from './AccountSheets'
 import TradeDrafts from './TradeDrafts'
+import { CURRENT_RANK, TOTAL_ASSET, TOTAL_RETURN, formatReturn, formatWon } from './tradingData'
 import investBattery from './assets/invest-ios-battery.svg'
 import investHome from './assets/invest-home.svg'
 import investMessage from './assets/invest-message.svg'
@@ -30,10 +32,24 @@ type InvestCardVariant = 'default' | 'compact' | 'scoreboard'
 type ScreenKey = 'home' | 'chat-list' | 'chat-room' | 'splash'
 type NavKey = 'home' | 'chat' | 'invest' | 'portfolio' | 'my'
 
-type SentMessage = {
-  id: string
-  text: string
-  sentAt: string
+type SocialViewKind = 'balance' | 'ranking'
+
+type RoomTimelineItem =
+  | { id: string; kind: 'message'; text: string; sentAt: string }
+  | { id: string; kind: 'view-event'; viewKind: SocialViewKind; count: number; sentAt: string }
+  | { id: string; kind: 'portfolio-share'; sentAt: string }
+
+type SocialViewTracker = { count: number; lastCountedAt: number; dateKey: string }
+
+const SOCIAL_VIEW_COOLDOWN_MS = 30_000
+
+function isSocialViewMilestone(count: number) {
+  return count === 3 || (count >= 5 && count % 5 === 0)
+}
+
+function getLocalDateKey() {
+  const now = new Date()
+  return `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
 }
 
 type FeedIcons = {
@@ -467,15 +483,23 @@ function ChatListScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => voi
 
 function ChatRoomScreen({
   onNavigate,
-  sentMessages,
+  roomTimeline,
+  viewCounts,
   onSendMessage,
+  onRecordSocialView,
+  onSharePortfolio,
 }: {
   onNavigate: (screen: ScreenKey) => void
-  sentMessages: SentMessage[]
+  roomTimeline: RoomTimelineItem[]
+  viewCounts: Record<SocialViewKind, number>
   onSendMessage: (message: string) => void
+  onRecordSocialView: (viewKind: SocialViewKind) => void
+  onSharePortfolio: () => void
 }) {
   const [messageDraft, setMessageDraft] = useState('')
   const [isTradeSheetOpen, setIsTradeSheetOpen] = useState(false)
+  const [isPortfolioSheetOpen, setIsPortfolioSheetOpen] = useState(false)
+  const [isRankingSheetOpen, setIsRankingSheetOpen] = useState(false)
   const [isTradeSheetDragging, setIsTradeSheetDragging] = useState(false)
   const [tradeSheetDragY, setTradeSheetDragY] = useState(0)
   const messageInputRef = useRef<HTMLTextAreaElement>(null)
@@ -488,10 +512,10 @@ function ChatRoomScreen({
   const canSendMessage = messageDraft.trim().length > 0
 
   useEffect(() => {
-    if (sentMessages.length > 0) {
+    if (roomTimeline.length > 0) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
     }
-  }, [sentMessages])
+  }, [roomTimeline])
 
   useEffect(() => {
     if (!isTradeSheetOpen) return
@@ -594,6 +618,25 @@ function ChatRoomScreen({
     tradeSheetDragYRef.current = 0
   }
 
+  const openPortfolioSheet = () => {
+    closeTradeSheet()
+    setIsRankingSheetOpen(false)
+    onRecordSocialView('balance')
+    setIsPortfolioSheetOpen(true)
+  }
+
+  const openRankingSheet = () => {
+    closeTradeSheet()
+    setIsPortfolioSheetOpen(false)
+    onRecordSocialView('ranking')
+    setIsRankingSheetOpen(true)
+  }
+
+  const sharePortfolio = () => {
+    onSharePortfolio()
+    setIsPortfolioSheetOpen(false)
+  }
+
   const startTradeSheetDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
     event.preventDefault()
     tradeSheetDragStartYRef.current = event.clientY
@@ -611,16 +654,24 @@ function ChatRoomScreen({
               쌍디 투자대회방
               <span className="chat-header-participants">4명</span>
             </strong>
-            <span>현재 2명 활동 중</span>
+            <span>현재 2명 활동 중 · 종료 D-5</span>
           </div>
           <div className="chat-room-actions">
             <button type="button" aria-label="통화">◡</button>
             <button type="button" aria-label="더 보기">⋮</button>
           </div>
         </header>
-        <div className="chat-room-market-bar">
-          <span>대회 종료 시간</span>
-          <strong>2026.08.31 23:59</strong>
+        <div className="chat-room-account-bar">
+          <button type="button" className="chat-account-summary" aria-label="내 잔고 보기" onClick={openPortfolioSheet}>
+            <span>내 총자산</span>
+            <strong>{formatWon(TOTAL_ASSET)}</strong>
+            <em>{formatReturn(TOTAL_RETURN)}</em>
+          </button>
+          <button type="button" className="chat-ranking-button" aria-label={`현재 ${CURRENT_RANK}위, 순위 보기`} onClick={openRankingSheet}>
+            <span>순위 보기</span>
+            <strong>{CURRENT_RANK}위</strong>
+            <b aria-hidden="true">⌄</b>
+          </button>
         </div>
         <div className="chat-date-divider">오늘, 2026년 2월 24일</div>
         <section
@@ -674,14 +725,44 @@ function ChatRoomScreen({
             <p>잘 먹고 갑니다 ㅋㅋㅋㅋㅋ</p>
             <time>오후 9:43</time>
           </article>
-          {sentMessages.map((message) => (
-            <article className="chat-message outgoing" key={message.id}>
-              <p>{message.text}</p>
-              <time>{message.sentAt}</time>
-            </article>
-          ))}
+          {roomTimeline.map((item) => {
+            if (item.kind === 'message') {
+              return (
+                <article className="chat-message outgoing" key={item.id}>
+                  <p>{item.text}</p>
+                  <time>{item.sentAt}</time>
+                </article>
+              )
+            }
+
+            if (item.kind === 'view-event') {
+              const viewLabel = item.viewKind === 'balance' ? '잔고' : '순위'
+              return (
+                <div className={`chat-view-alert is-${item.viewKind}`} role="status" key={item.id}>
+                  <span className="chat-view-alert-badge">{viewLabel}</span>
+                  <span>김형진님이 오늘 {viewLabel}를 <strong>{item.count}번째</strong> 확인했어요 👀</span>
+                </div>
+              )
+            }
+
+            return (
+              <article className="chat-portfolio-share" key={item.id}>
+                <span className="chat-portfolio-share-badge">잔고 공유</span>
+                <strong>김형진님의 포트폴리오</strong>
+                <p>총자산 {formatWon(TOTAL_ASSET)} · {formatReturn(TOTAL_RETURN)}</p>
+                <small>삼성전자 · SK하이닉스 외 3종목</small>
+                <time>{item.sentAt}</time>
+              </article>
+            )
+          })}
           <div ref={messagesEndRef} aria-hidden="true" />
         </section>
+        {(isPortfolioSheetOpen || isRankingSheetOpen) && (
+          <div className="chat-view-presence" role="status">
+            <span aria-hidden="true">👀</span>
+            김형진님이 {isPortfolioSheetOpen ? '잔고' : '순위'}를 확인 중이에요
+          </div>
+        )}
       </div>
       <div className="chat-composer">
         <button type="button" aria-label="첨부">＋</button>
@@ -753,11 +834,17 @@ function ChatRoomScreen({
                 <div className="trade-sheet-grabber" aria-hidden="true" />
               </div>
               <div className="trade-sheet-canvas">
-                <TradeDrafts shortAllowed />
+                <TradeDrafts shortAllowed onOpenPortfolio={openPortfolioSheet} />
               </div>
             </div>
           </section>
         </div>
+      )}
+      {isPortfolioSheetOpen && (
+        <PortfolioSheet viewCount={viewCounts.balance} onClose={() => setIsPortfolioSheetOpen(false)} onShare={sharePortfolio} />
+      )}
+      {isRankingSheetOpen && (
+        <RankingSheet viewCount={viewCounts.ranking} onClose={() => setIsRankingSheetOpen(false)} />
       )}
     </main>
   )
@@ -816,7 +903,12 @@ function HomeFeed({ mode, onModeChange, cardVariant, onNavigate }: { mode: FeedM
 
 export default function App() {
   const [mode, setMode] = useState<FeedMode>('invest')
-  const [sentMessages, setSentMessages] = useState<SentMessage[]>([])
+  const [roomTimeline, setRoomTimeline] = useState<RoomTimelineItem[]>([])
+  const [viewCounts, setViewCounts] = useState<Record<SocialViewKind, number>>({ balance: 0, ranking: 0 })
+  const socialViewTrackerRef = useRef<Record<SocialViewKind, SocialViewTracker>>({
+    balance: { count: 0, lastCountedAt: 0, dateKey: '' },
+    ranking: { count: 0, lastCountedAt: 0, dateKey: '' },
+  })
   const [screen, setScreen] = useState<ScreenKey>(() => {
     if (typeof window === 'undefined') return 'home'
     const requestedScreen = new URLSearchParams(window.location.search).get('screen')
@@ -833,22 +925,64 @@ export default function App() {
     window.history.pushState({}, '', query ? `/?${query}` : '/')
   }
 
-  const sendChatMessage = (message: string) => {
+  const getCurrentChatTime = () => {
     const now = new Date()
     const hour = now.getHours()
     const period = hour < 12 ? '오전' : '오후'
     const displayHour = hour % 12 || 12
-    const sentAt = `${period} ${displayHour}:${String(now.getMinutes()).padStart(2, '0')}`
+    return `${period} ${displayHour}:${String(now.getMinutes()).padStart(2, '0')}`
+  }
 
-    setSentMessages((currentMessages) => [
-      ...currentMessages,
-      { id: crypto.randomUUID(), text: message, sentAt },
+  const sendChatMessage = (message: string) => {
+    setRoomTimeline((currentTimeline) => [
+      ...currentTimeline,
+      { id: crypto.randomUUID(), kind: 'message', text: message, sentAt: getCurrentChatTime() },
+    ])
+  }
+
+  const addViewMilestone = (viewKind: SocialViewKind, count: number) => {
+    setRoomTimeline((currentTimeline) => [
+      ...currentTimeline,
+      { id: crypto.randomUUID(), kind: 'view-event', viewKind, count, sentAt: getCurrentChatTime() },
+    ])
+  }
+
+  const recordSocialView = (viewKind: SocialViewKind) => {
+    const now = Date.now()
+    const dateKey = getLocalDateKey()
+    const storedTracker = socialViewTrackerRef.current[viewKind]
+    const tracker = storedTracker.dateKey === dateKey
+      ? storedTracker
+      : { count: 0, lastCountedAt: 0, dateKey }
+
+    if (now - tracker.lastCountedAt < SOCIAL_VIEW_COOLDOWN_MS) return
+
+    const nextCount = tracker.count + 1
+    socialViewTrackerRef.current[viewKind] = { count: nextCount, lastCountedAt: now, dateKey }
+    setViewCounts((currentCounts) => ({ ...currentCounts, [viewKind]: nextCount }))
+
+    if (isSocialViewMilestone(nextCount)) addViewMilestone(viewKind, nextCount)
+  }
+
+  const sharePortfolio = () => {
+    setRoomTimeline((currentTimeline) => [
+      ...currentTimeline,
+      { id: crypto.randomUUID(), kind: 'portfolio-share', sentAt: getCurrentChatTime() },
     ])
   }
 
   if (screen === 'chat-list') return <ChatListScreen onNavigate={navigate} />
   if (screen === 'chat-room') {
-    return <ChatRoomScreen onNavigate={navigate} sentMessages={sentMessages} onSendMessage={sendChatMessage} />
+    return (
+      <ChatRoomScreen
+        onNavigate={navigate}
+        roomTimeline={roomTimeline}
+        viewCounts={viewCounts}
+        onSendMessage={sendChatMessage}
+        onRecordSocialView={recordSocialView}
+        onSharePortfolio={sharePortfolio}
+      />
+    )
   }
   if (screen === 'splash') return <SplashScreen />
   return <HomeFeed mode={mode} onModeChange={setMode} cardVariant={getInvestCardVariant()} onNavigate={navigate} />
