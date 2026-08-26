@@ -7,6 +7,20 @@ export type Instrument = {
   shortQuantity?: number
 }
 
+export type TradeDirection = 'buy' | 'sell' | 'short' | 'cover'
+
+export type OpenOrder = {
+  id: string
+  instrumentCode: string
+  direction: TradeDirection
+  price: number
+  remainingQuantity: number
+  filledQuantity: number
+  submittedAt: string
+}
+
+export type OpenOrderUpdate = Pick<OpenOrder, 'price' | 'remainingQuantity'>
+
 export const ORDERABLE_CASH = 8_420_000
 export const INITIAL_ASSET = 15_000_000
 
@@ -19,6 +33,27 @@ export const instruments: Instrument[] = [
   { name: 'NAVER', code: '035420', price: 214_500, change: 0.4, longQuantity: 11 },
   { name: 'LG에너지솔루션', code: '373220', price: 381_000, change: -0.7, longQuantity: 5 },
   { name: 'POSCO홀딩스', code: '005490', price: 348_500, change: -0.5, shortQuantity: 6 },
+]
+
+export const initialOpenOrders: OpenOrder[] = [
+  {
+    id: 'open-order-samsung-buy',
+    instrumentCode: '005930',
+    direction: 'buy',
+    price: 70_500,
+    remainingQuantity: 10,
+    filledQuantity: 0,
+    submittedAt: '오전 9:18',
+  },
+  {
+    id: 'open-order-ecopro-short',
+    instrumentCode: '086520',
+    direction: 'short',
+    price: 94_000,
+    remainingQuantity: 5,
+    filledQuantity: 3,
+    submittedAt: '오전 10:02',
+  },
 ]
 
 export const LONG_MARKET_VALUE = instruments.reduce(

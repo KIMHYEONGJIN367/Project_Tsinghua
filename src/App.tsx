@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { PortfolioSheet, RankingSheet } from './AccountSheets'
 import TradeDrafts from './TradeDrafts'
-import { CURRENT_RANK, TOTAL_ASSET, TOTAL_RETURN, formatReturn, formatWon } from './tradingData'
+import {
+  CURRENT_RANK,
+  TOTAL_ASSET,
+  TOTAL_RETURN,
+  formatReturn,
+  formatWon,
+  initialOpenOrders,
+  type OpenOrder,
+  type OpenOrderUpdate,
+} from './tradingData'
 import investBattery from './assets/invest-ios-battery.svg'
 import investHome from './assets/invest-home.svg'
 import investMessage from './assets/invest-message.svg'
@@ -488,6 +497,9 @@ function ChatRoomScreen({
   onSendMessage,
   onRecordSocialView,
   onSharePortfolio,
+  openOrders,
+  onUpdateOpenOrder,
+  onCancelOpenOrder,
 }: {
   onNavigate: (screen: ScreenKey) => void
   roomTimeline: RoomTimelineItem[]
@@ -495,6 +507,9 @@ function ChatRoomScreen({
   onSendMessage: (message: string) => void
   onRecordSocialView: (viewKind: SocialViewKind) => void
   onSharePortfolio: () => void
+  openOrders: OpenOrder[]
+  onUpdateOpenOrder: (orderId: string, update: OpenOrderUpdate) => void
+  onCancelOpenOrder: (orderId: string) => void
 }) {
   const [messageDraft, setMessageDraft] = useState('')
   const [isTradeSheetOpen, setIsTradeSheetOpen] = useState(false)
@@ -834,14 +849,14 @@ function ChatRoomScreen({
                 <div className="trade-sheet-grabber" aria-hidden="true" />
               </div>
               <div className="trade-sheet-canvas">
-                <TradeDrafts shortAllowed onOpenPortfolio={openPortfolioSheet} />
+                <TradeDrafts shortAllowed onOpenPortfolio={openPortfolioSheet} openOrders={openOrders} onUpdateOpenOrder={onUpdateOpenOrder} onCancelOpenOrder={onCancelOpenOrder} />
               </div>
             </div>
           </section>
         </div>
       )}
       {isPortfolioSheetOpen && (
-        <PortfolioSheet viewCount={viewCounts.balance} onClose={() => setIsPortfolioSheetOpen(false)} onShare={sharePortfolio} />
+        <PortfolioSheet viewCount={viewCounts.balance} openOrders={openOrders} onClose={() => setIsPortfolioSheetOpen(false)} onShare={sharePortfolio} />
       )}
       {isRankingSheetOpen && (
         <RankingSheet viewCount={viewCounts.ranking} onClose={() => setIsRankingSheetOpen(false)} />
@@ -904,6 +919,7 @@ function HomeFeed({ mode, onModeChange, cardVariant, onNavigate }: { mode: FeedM
 export default function App() {
   const [mode, setMode] = useState<FeedMode>('invest')
   const [roomTimeline, setRoomTimeline] = useState<RoomTimelineItem[]>([])
+  const [openOrders, setOpenOrders] = useState<OpenOrder[]>(initialOpenOrders)
   const [viewCounts, setViewCounts] = useState<Record<SocialViewKind, number>>({ balance: 0, ranking: 0 })
   const socialViewTrackerRef = useRef<Record<SocialViewKind, SocialViewTracker>>({
     balance: { count: 0, lastCountedAt: 0, dateKey: '' },
@@ -971,6 +987,16 @@ export default function App() {
     ])
   }
 
+  const updateOpenOrder = (orderId: string, update: OpenOrderUpdate) => {
+    setOpenOrders((currentOrders) => currentOrders.map((order) => (
+      order.id === orderId ? { ...order, ...update } : order
+    )))
+  }
+
+  const cancelOpenOrder = (orderId: string) => {
+    setOpenOrders((currentOrders) => currentOrders.filter((order) => order.id !== orderId))
+  }
+
   if (screen === 'chat-list') return <ChatListScreen onNavigate={navigate} />
   if (screen === 'chat-room') {
     return (
@@ -981,6 +1007,9 @@ export default function App() {
         onSendMessage={sendChatMessage}
         onRecordSocialView={recordSocialView}
         onSharePortfolio={sharePortfolio}
+        openOrders={openOrders}
+        onUpdateOpenOrder={updateOpenOrder}
+        onCancelOpenOrder={cancelOpenOrder}
       />
     )
   }

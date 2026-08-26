@@ -2704,6 +2704,65 @@ body:has(.splash-shell) {
   box-shadow: 0 2px 7px rgba(105, 83, 168, 0.2);
 }
 
+.ticket-order-management {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 3px 2px;
+}
+
+.ticket-order-management > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ticket-order-management > span strong {
+  color: #51494a;
+  font-size: 9px;
+}
+
+.ticket-order-management > span small {
+  color: #948a8b;
+  font-size: 7px;
+}
+
+.ticket-order-management > button {
+  display: flex;
+  height: 30px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px 0 10px;
+  border: 1px solid #e8dcd8;
+  border-radius: 999px;
+  background: #fff8f6;
+  color: #7d6f71;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.ticket-order-management > button b {
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: #b8323c;
+  color: #ffffff;
+  font-size: 8px;
+}
+
+.ticket-order-management > button > span {
+  color: #b8323c;
+  font-size: 11px;
+  font-weight: 400;
+}
+
 .ticket-instrument-section,
 .ticket-order-type-section,
 .ticket-quantity-section,
@@ -3286,22 +3345,22 @@ body:has(.splash-shell) {
 }
 
 .ticket-sticky-footer {
-  display: grid;
+  display: flex;
   flex-shrink: 0;
-  grid-template-columns: minmax(0, 0.88fr) minmax(150px, 1.12fr);
-  align-items: center;
-  gap: 10px;
-  padding: 9px 16px 3px;
+  flex-direction: column;
+  gap: 6px;
+  padding: 7px 16px 3px;
   border-top: 1px solid #eee7e1;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 -8px 18px rgba(73, 48, 50, 0.04);
 }
 
-.ticket-sticky-footer > span {
+.ticket-footer-estimate {
   display: flex;
   min-width: 0;
-  flex-direction: column;
-  gap: 3px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .ticket-sticky-footer small {
@@ -3318,15 +3377,30 @@ body:has(.splash-shell) {
   white-space: nowrap;
 }
 
-.ticket-sticky-footer button {
+.ticket-footer-actions {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.ticket-footer-actions button {
   height: 43px;
   padding: 0 10px;
-  border: 0;
   border-radius: 12px;
-  background: #b8323c;
-  color: #ffffff;
   font-size: 10px;
   font-weight: 750;
+}
+
+.ticket-balance-action {
+  border: 1px solid #dfd6d0;
+  background: #ffffff;
+  color: #4d4647;
+}
+
+.ticket-primary-action {
+  border: 0;
+  background: #b8323c;
+  color: #ffffff;
   box-shadow: 0 5px 14px rgba(184, 50, 60, 0.18);
 }
 
@@ -3395,6 +3469,369 @@ body:has(.splash-shell) {
   border: 1px solid #eae2dc;
   border-radius: 12px;
   scrollbar-width: none;
+}
+
+.ticket-orders-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+}
+
+.ticket-orders-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: rgba(24, 20, 21, 0.4);
+}
+
+.ticket-orders-sheet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  max-height: 88%;
+  min-height: 62%;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 14px 12px;
+  border-radius: 20px 20px 0 0;
+  background: #ffffff;
+  box-shadow: 0 -12px 30px rgba(62, 38, 41, 0.18);
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: trade-sheet-in 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.ticket-orders-sheet.is-dragging {
+  transition: none;
+}
+
+.ticket-orders-close-grabber {
+  display: flex;
+  width: 100%;
+  height: 30px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  touch-action: none;
+  cursor: grab;
+}
+
+.ticket-orders-close-grabber span {
+  width: 38px;
+  height: 4px;
+  border-radius: 999px;
+  background: #dcd6d1;
+}
+
+.ticket-orders-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 2px 11px;
+}
+
+.ticket-orders-header > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ticket-orders-header strong {
+  color: #252122;
+  font-size: 12px;
+}
+
+.ticket-orders-header small {
+  color: #8f8586;
+  font-size: 7px;
+}
+
+.ticket-orders-header > b {
+  flex-shrink: 0;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #fff2f1;
+  color: #b8323c;
+  font-size: 8px;
+}
+
+.ticket-orders-list {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.ticket-orders-list::-webkit-scrollbar {
+  display: none;
+}
+
+.ticket-order-card {
+  overflow: hidden;
+  margin-bottom: 7px;
+  border: 1px solid #e9e1db;
+  border-radius: 13px;
+  background: #ffffff;
+}
+
+.ticket-order-card.is-selected {
+  border-color: #d7c6c2;
+  box-shadow: 0 5px 16px rgba(72, 45, 48, 0.07);
+}
+
+.ticket-order-summary {
+  display: grid;
+  width: 100%;
+  min-height: 52px;
+  grid-template-columns: 37px minmax(0, 1fr) auto 12px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 0;
+  background: #ffffff;
+  color: #302b2c;
+  text-align: left;
+}
+
+.ticket-order-direction {
+  display: grid;
+  height: 24px;
+  place-items: center;
+  border-radius: 7px;
+  background: #fff0ef;
+  color: #b8323c;
+  font-size: 8px;
+  font-weight: 750;
+}
+
+.ticket-order-direction.is-short,
+.ticket-order-direction.is-cover {
+  background: #f3efff;
+  color: #6953a8;
+}
+
+.ticket-order-direction.is-sell {
+  background: #eef7ff;
+  color: #2175b9;
+}
+
+.ticket-order-name,
+.ticket-order-value {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ticket-order-value {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.ticket-order-name strong,
+.ticket-order-value strong {
+  overflow: hidden;
+  color: #302b2c;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ticket-order-name small,
+.ticket-order-value small {
+  color: #918788;
+  font-size: 7px;
+}
+
+.ticket-order-summary > b {
+  color: #aa9fa0;
+  font-size: 11px;
+  font-weight: 400;
+  transform: rotate(0deg);
+  transition: transform 160ms ease;
+}
+
+.ticket-order-summary[aria-expanded="true"] > b {
+  transform: rotate(180deg);
+}
+
+.ticket-order-detail {
+  padding: 0 9px 9px;
+  border-top: 1px solid #f0eae5;
+  background: #fffcfa;
+}
+
+.ticket-order-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  margin: 8px 0;
+  border-radius: 9px;
+  background: #ebe4de;
+}
+
+.ticket-order-facts > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px;
+  background: #f8f6f2;
+}
+
+.ticket-order-facts small {
+  color: #8e8485;
+  font-size: 7px;
+}
+
+.ticket-order-facts strong {
+  overflow: hidden;
+  color: #393334;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ticket-order-actions,
+.ticket-order-edit > div,
+.ticket-order-cancel-confirm > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ticket-order-actions button,
+.ticket-order-edit > div button,
+.ticket-order-cancel-confirm button {
+  height: 34px;
+  border: 1px solid #dfd6d0;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #4f4748;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.ticket-order-actions button:first-child,
+.ticket-order-edit > div button:last-child {
+  border-color: #b8323c;
+  background: #b8323c;
+  color: #ffffff;
+}
+
+.ticket-order-actions button.is-cancel,
+.ticket-order-cancel-confirm button:last-child {
+  border-color: #e7c9c7;
+  color: #b8323c;
+}
+
+.ticket-order-edit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.ticket-order-edit label {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
+  gap: 2px 4px;
+  padding: 7px 8px;
+  border: 1px solid #e4dcd6;
+  border-radius: 9px;
+  background: #ffffff;
+}
+
+.ticket-order-edit label span {
+  grid-column: 1 / -1;
+  color: #8f8586;
+  font-size: 7px;
+}
+
+.ticket-order-edit input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #2f2a2b;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.ticket-order-edit label small {
+  align-self: center;
+  color: #817778;
+  font-size: 7px;
+}
+
+.ticket-order-edit > p,
+.ticket-order-edit > div {
+  grid-column: 1 / -1;
+}
+
+.ticket-order-edit > p {
+  margin: 0;
+  color: #8d8384;
+  font-size: 7px;
+  line-height: 1.4;
+}
+
+.ticket-order-cancel-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 9px;
+  border-radius: 9px;
+  background: #fff2f1;
+}
+
+.ticket-order-cancel-confirm > span {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.ticket-order-cancel-confirm strong {
+  color: #6c3338;
+  font-size: 8px;
+}
+
+.ticket-order-cancel-confirm small {
+  color: #9b7477;
+  font-size: 7px;
+}
+
+.ticket-orders-empty {
+  display: flex;
+  min-height: 150px;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #8f8586;
+  text-align: center;
+}
+
+.ticket-orders-empty strong {
+  color: #514a4b;
+  font-size: 10px;
+}
+
+.ticket-orders-empty span {
+  font-size: 8px;
 }
 
 /* Room-level account access and social portfolio activity. */
@@ -3577,52 +4014,6 @@ body:has(.splash-shell) {
 
 .chat-portfolio-share time {
   align-self: flex-end;
-}
-
-.ticket-nav-summary {
-  display: flex;
-  width: 100%;
-  min-height: 42px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 7px 10px;
-  border: 1px solid #eaded8;
-  border-radius: 11px;
-  background: #ffffff;
-  color: #202124;
-  text-align: left;
-}
-
-.ticket-nav-summary > span {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.ticket-nav-summary > span:last-child {
-  flex-shrink: 0;
-  align-items: flex-end;
-  text-align: right;
-}
-
-.ticket-nav-summary small {
-  color: #918788;
-  font-size: 7px;
-}
-
-.ticket-nav-summary strong {
-  overflow: hidden;
-  color: #2c2829;
-  font-size: 10px;
-  font-weight: 750;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ticket-nav-summary > span:last-child strong {
-  color: #b8323c;
 }
 
 .social-sheet-layer {

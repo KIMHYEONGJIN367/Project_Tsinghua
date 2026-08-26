@@ -1,27 +1,25 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   ORDERABLE_CASH,
-  TOTAL_ASSET,
-  TOTAL_RETURN,
-  formatReturn,
   formatWon,
   instruments,
   type Instrument,
+  type OpenOrder,
+  type OpenOrderUpdate,
+  type TradeDirection,
 } from './tradingData'
 
-type TradeDirection = 'buy' | 'sell' | 'short' | 'cover'
 type OrderType = 'market' | 'limit'
 
 const directionMeta: Record<TradeDirection, {
   tabLabel: string
-  label: string
   searchLabel: string
   quantityBasis: string
 }> = {
-  buy: { tabLabel: '매수', label: '매수', searchLabel: '종목명·코드 검색', quantityBasis: '현금 기준' },
-  sell: { tabLabel: '매도', label: '매도', searchLabel: '내 Long 보유종목', quantityBasis: '보유 수량 기준' },
-  short: { tabLabel: '공매도', label: '공매도', searchLabel: '공매도 가능 종목 검색', quantityBasis: '주문 가능 금액 기준' },
-  cover: { tabLabel: '상환', label: '공매도 상환', searchLabel: '내 Short 보유종목', quantityBasis: 'Short 보유 수량 기준' },
+  buy: { tabLabel: '매수', searchLabel: '종목명·코드 검색', quantityBasis: '현금 기준' },
+  sell: { tabLabel: '매도', searchLabel: '내 Long 보유종목', quantityBasis: '보유 수량 기준' },
+  short: { tabLabel: '공매도', searchLabel: '공매도 가능 종목 검색', quantityBasis: '주문 가능 금액 기준' },
+  cover: { tabLabel: '상환', searchLabel: '내 Short 보유종목', quantityBasis: 'Short 보유 수량 기준' },
 }
 
 function DirectionTabs({ direction, onChange, shortAllowed }: {
@@ -140,11 +138,10 @@ function InstrumentAccess({
   )
 }
 
-function AccountAndCapacity({ direction, instrument, maxQuantity, onOpenPortfolio }: {
+function QuoteAndCapacity({ direction, instrument, maxQuantity }: {
   direction: TradeDirection
   instrument: Instrument
   maxQuantity: number
-  onOpenPortfolio: () => void
 }) {
   const quantityLabel = direction === 'sell'
     ? '매도 가능'
@@ -156,10 +153,6 @@ function AccountAndCapacity({ direction, instrument, maxQuantity, onOpenPortfoli
 
   return (
     <>
-      <button type="button" className="ticket-nav-summary" onClick={onOpenPortfolio}>
-        <span><small>내 총자산</small><strong>{formatWon(TOTAL_ASSET)}</strong></span>
-        <span><strong>{formatReturn(TOTAL_RETURN)}</strong><small>잔고 보기 〉</small></span>
-      </button>
       <div className="ticket-quote-row">
         <span><strong>{instrument.name}</strong><small>{instrument.code} · 현재가</small></span>
         <span><strong>{formatWon(instrument.price)}</strong><small className={instrument.change >= 0 ? 'is-positive' : 'is-negative'}>{instrument.change >= 0 ? '+' : ''}{instrument.change}%</small></span>
@@ -169,6 +162,182 @@ function AccountAndCapacity({ direction, instrument, maxQuantity, onOpenPortfoli
         <span><small>{quantityLabel}</small><strong>{maxQuantity.toLocaleString('ko-KR')}주</strong></span>
       </div>
     </>
+  )
+}
+
+function OpenOrdersManager({ openOrders, onUpdate, onCancel, onClose }: {
+  openOrders: OpenOrder[]
+  onUpdate: (orderId: string, update: OpenOrderUpdate) => void
+  onCancel: (orderId: string) => void
+  onClose: () => void
+}) {
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(openOrders[0]?.id ?? null)
+  const [mode, setMode] = useState<'summary' | 'edit' | 'cancel'>('summary')
+  const selectedOrder = openOrders.find((order) => order.id === selectedOrderId) ?? null
+  const [draftPrice, setDraftPrice] = useState(selectedOrder?.price ?? 0)
+  const [draftQuantity, setDraftQuantity] = useState(selectedOrder?.remainingQuantity ?? 1)
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const sheetRef = useRef<HTMLElement>(null)
+  const dragStartYRef = useRef<number | null>(null)
+  const dragOffsetRef = useRef(0)
+
+  useEffect(() => {
+    if (!selectedOrder) {
+      setMode('summary')
+      return
+    }
+
+    setDraftPrice(selectedOrder.price)
+    setDraftQuantity(selectedOrder.remainingQuantity)
+    setMode('summary')
+  }, [selectedOrderId, selectedOrder?.price, selectedOrder?.remainingQuantity])
+
+  useEffect(() => {
+    const moveSheet = (event: PointerEvent) => {
+      if (dragStartYRef.current === null) return
+      const nextOffset = Math.max(0, event.clientY - dragStartYRef.current)
+      dragOffsetRef.current = nextOffset
+      setDragOffset(nextOffset)
+    }
+
+    const finishDrag = () => {
+      if (dragStartYRef.current === null) return
+      dragStartYRef.current = null
+      setIsDragging(false)
+
+      if (dragOffsetRef.current >= 72) {
+        const sheetHeight = sheetRef.current?.getBoundingClientRect().height ?? 500
+        dragOffsetRef.current = sheetHeight
+        setDragOffset(sheetHeight)
+        window.setTimeout(onClose, 180)
+        return
+      }
+
+      dragOffsetRef.current = 0
+      setDragOffset(0)
+    }
+
+    const cancelDrag = () => {
+      dragStartYRef.current = null
+      dragOffsetRef.current = 0
+      setIsDragging(false)
+      setDragOffset(0)
+    }
+
+    window.addEventListener('pointermove', moveSheet)
+    window.addEventListener('pointerup', finishDrag)
+    window.addEventListener('pointercancel', cancelDrag)
+    return () => {
+      window.removeEventListener('pointermove', moveSheet)
+      window.removeEventListener('pointerup', finishDrag)
+      window.removeEventListener('pointercancel', cancelDrag)
+    }
+  }, [onClose])
+
+  const startDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.preventDefault()
+    dragStartYRef.current = event.clientY
+    setIsDragging(true)
+  }
+
+  const selectOrder = (order: OpenOrder) => {
+    setSelectedOrderId((currentId) => currentId === order.id ? null : order.id)
+  }
+
+  const applyCorrection = () => {
+    if (!selectedOrder) return
+    onUpdate(selectedOrder.id, {
+      price: Math.max(100, draftPrice),
+      remainingQuantity: Math.max(1, draftQuantity),
+    })
+    setMode('summary')
+  }
+
+  const cancelOrder = () => {
+    if (!selectedOrder) return
+    onCancel(selectedOrder.id)
+    setSelectedOrderId(null)
+    setMode('summary')
+  }
+
+  return (
+    <div className="ticket-orders-layer">
+      <button type="button" className="ticket-orders-backdrop" aria-label="미체결 주문 닫기" onClick={onClose} />
+      <section ref={sheetRef} className={`ticket-orders-sheet ${isDragging ? 'is-dragging' : ''}`} style={{ transform: `translateY(${dragOffset}px)` }} role="dialog" aria-modal="true" aria-label="미체결 주문 관리">
+        <button
+          type="button"
+          className="ticket-orders-close-grabber"
+          aria-label="아래로 드래그하여 미체결 주문 닫기"
+          onPointerDown={startDrag}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
+              event.preventDefault()
+              onClose()
+            }
+          }}
+        ><span aria-hidden="true" /></button>
+        <header className="ticket-orders-header">
+          <span><strong>미체결 주문</strong><small>가격·수량을 바로 정정하거나 취소할 수 있어요.</small></span>
+          <b>{openOrders.length}건</b>
+        </header>
+
+        {openOrders.length === 0 ? (
+          <div className="ticket-orders-empty"><strong>미체결 주문이 없어요</strong><span>새 주문을 접수하면 이곳에서 관리할 수 있어요.</span></div>
+        ) : (
+          <div className="ticket-orders-list">
+            {openOrders.map((order) => {
+              const instrument = instruments.find((item) => item.code === order.instrumentCode) ?? instruments[0]
+              const isSelected = selectedOrderId === order.id
+              const totalQuantity = order.filledQuantity + order.remainingQuantity
+              return (
+                <article className={`ticket-order-card ${isSelected ? 'is-selected' : ''}`} key={order.id}>
+                  <button type="button" className="ticket-order-summary" aria-expanded={isSelected} onClick={() => selectOrder(order)}>
+                    <span className={`ticket-order-direction is-${order.direction}`}>{directionMeta[order.direction].tabLabel}</span>
+                    <span className="ticket-order-name"><strong>{instrument.name}</strong><small>{order.submittedAt} · 지정가</small></span>
+                    <span className="ticket-order-value"><strong>{formatWon(order.price)}</strong><small>잔여 {order.remainingQuantity}주</small></span>
+                    <b aria-hidden="true">⌄</b>
+                  </button>
+
+                  {isSelected && (
+                    <div className="ticket-order-detail">
+                      <div className="ticket-order-facts">
+                        <span><small>현재가</small><strong>{formatWon(instrument.price)}</strong></span>
+                        <span><small>주문 수량</small><strong>{totalQuantity}주</strong></span>
+                        <span><small>체결 / 잔여</small><strong>{order.filledQuantity} / {order.remainingQuantity}주</strong></span>
+                      </div>
+
+                      {mode === 'summary' && (
+                        <div className="ticket-order-actions">
+                          <button type="button" onClick={() => setMode('edit')}>정정</button>
+                          <button type="button" className="is-cancel" onClick={() => setMode('cancel')}>취소</button>
+                        </div>
+                      )}
+
+                      {mode === 'edit' && (
+                        <div className="ticket-order-edit">
+                          <label><span>정정 가격</span><input aria-label="정정 가격" inputMode="numeric" value={draftPrice.toLocaleString('ko-KR')} onChange={(event) => setDraftPrice(Number(event.target.value.replace(/[^0-9]/g, '')) || 0)} /><small>원</small></label>
+                          <label><span>정정 잔여 수량</span><input aria-label="정정 잔여 수량" inputMode="numeric" value={draftQuantity.toLocaleString('ko-KR')} onChange={(event) => setDraftQuantity(Number(event.target.value.replace(/[^0-9]/g, '')) || 0)} /><small>주</small></label>
+                          <p>부분 체결분은 바뀌지 않고 남은 수량만 정정돼요.</p>
+                          <div><button type="button" onClick={() => setMode('summary')}>돌아가기</button><button type="button" onClick={applyCorrection}>정정 적용</button></div>
+                        </div>
+                      )}
+
+                      {mode === 'cancel' && (
+                        <div className="ticket-order-cancel-confirm" role="alert">
+                          <span><strong>남은 {order.remainingQuantity}주를 취소할까요?</strong><small>이미 체결된 {order.filledQuantity}주는 취소되지 않아요.</small></span>
+                          <div><button type="button" onClick={() => setMode('summary')}>돌아가기</button><button type="button" onClick={cancelOrder}>주문 취소</button></div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </article>
+              )
+            })}
+          </div>
+        )}
+      </section>
+    </div>
   )
 }
 
@@ -283,9 +452,12 @@ function HoldingsPicker({ direction, selectedInstrument, onSelect, onClose }: {
   )
 }
 
-export default function TradeDrafts({ shortAllowed = true, onOpenPortfolio }: {
+export default function TradeDrafts({ shortAllowed = true, onOpenPortfolio, openOrders, onUpdateOpenOrder, onCancelOpenOrder }: {
   shortAllowed?: boolean
   onOpenPortfolio: () => void
+  openOrders: OpenOrder[]
+  onUpdateOpenOrder: (orderId: string, update: OpenOrderUpdate) => void
+  onCancelOpenOrder: (orderId: string) => void
 }) {
   const [direction, setDirection] = useState<TradeDirection>('buy')
   const [selectedInstrument, setSelectedInstrument] = useState<Instrument>(instruments[0])
@@ -296,6 +468,7 @@ export default function TradeDrafts({ shortAllowed = true, onOpenPortfolio }: {
   const [quantity, setQuantity] = useState(10)
   const [selectedPercent, setSelectedPercent] = useState<number | null>(null)
   const [isHoldingsPickerOpen, setIsHoldingsPickerOpen] = useState(false)
+  const [isOpenOrdersManagerOpen, setIsOpenOrdersManagerOpen] = useState(false)
 
   const effectivePrice = orderType === 'market' ? selectedInstrument.price : limitPrice
   const maxQuantity = useMemo(() => {
@@ -349,18 +522,26 @@ export default function TradeDrafts({ shortAllowed = true, onOpenPortfolio }: {
     <div className="ticket-prototypes">
       <div className="ticket-scroll-area">
         <DirectionTabs direction={direction} onChange={selectDirection} shortAllowed={shortAllowed} />
+        <div className="ticket-order-management">
+          <span><strong>주문 관리</strong><small>체결 전에는 정정·취소할 수 있어요.</small></span>
+          <button type="button" onClick={() => setIsOpenOrdersManagerOpen(true)}>미체결 <b>{openOrders.length}</b><span aria-hidden="true">〉</span></button>
+        </div>
         <InstrumentAccess direction={direction} selectedInstrument={selectedInstrument} searchQuery={searchQuery} searchFocused={searchFocused} onSearchQueryChange={setSearchQuery} onSearchFocusChange={setSearchFocused} onSelectInstrument={selectInstrument} onOpenAllHoldings={() => setIsHoldingsPickerOpen(true)} />
         <div className="ticket-prototype-stack">
-          <AccountAndCapacity direction={direction} instrument={selectedInstrument} maxQuantity={maxQuantity} onOpenPortfolio={onOpenPortfolio} />
+          <QuoteAndCapacity direction={direction} instrument={selectedInstrument} maxQuantity={maxQuantity} />
           <OrderTypeAndPrice orderType={orderType} currentPrice={selectedInstrument.price} limitPrice={limitPrice} onOrderTypeChange={setOrderType} onLimitPriceChange={setLimitPrice} />
           <QuantityControl quantity={quantity} maxQuantity={maxQuantity} selectedPercent={selectedPercent} quantityBasis={directionMeta[direction].quantityBasis} onQuantityChange={changeQuantity} onPercentSelect={selectPercent} />
         </div>
       </div>
       <footer className="ticket-sticky-footer">
-        <span><small>예상 주문금액</small><strong>{formatWon(estimatedAmount)}</strong></span>
-        <button type="button">{directionMeta[direction].label} 검토하기</button>
+        <span className="ticket-footer-estimate"><small>예상 주문금액</small><strong>{formatWon(estimatedAmount)}</strong></span>
+        <div className="ticket-footer-actions">
+          <button type="button" className="ticket-balance-action" onClick={onOpenPortfolio}>잔고</button>
+          <button type="button" className="ticket-primary-action">{directionMeta[direction].tabLabel}</button>
+        </div>
       </footer>
       {isHoldingsPickerOpen && <HoldingsPicker direction={direction} selectedInstrument={selectedInstrument} onSelect={selectInstrument} onClose={() => setIsHoldingsPickerOpen(false)} />}
+      {isOpenOrdersManagerOpen && <OpenOrdersManager openOrders={openOrders} onUpdate={onUpdateOpenOrder} onCancel={onCancelOpenOrder} onClose={() => setIsOpenOrdersManagerOpen(false)} />}
     </div>
   )
 }

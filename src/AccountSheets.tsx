@@ -15,6 +15,7 @@ import {
   formatReturn,
   formatWon,
   instruments,
+  type OpenOrder,
 } from './tradingData'
 
 type SheetEdge = 'top' | 'bottom'
@@ -143,10 +144,12 @@ function SwipeSheet({
 
 export function PortfolioSheet({
   viewCount,
+  openOrders,
   onClose,
   onShare,
 }: {
   viewCount: number
+  openOrders: OpenOrder[]
   onClose: () => void
   onShare: () => void
 }) {
@@ -176,12 +179,23 @@ export function PortfolioSheet({
       <div className="portfolio-tabs" role="tablist" aria-label="잔고 종류">
         <button type="button" role="tab" aria-selected={tab === 'long'} className={tab === 'long' ? 'is-selected' : ''} onClick={() => setTab('long')}>보유종목 <small>{longHoldings.length}</small></button>
         <button type="button" role="tab" aria-selected={tab === 'short'} className={tab === 'short' ? 'is-selected' : ''} onClick={() => setTab('short')}>공매도 <small>{shortHoldings.length}</small></button>
-        <button type="button" role="tab" aria-selected={tab === 'open'} className={tab === 'open' ? 'is-selected' : ''} onClick={() => setTab('open')}>미체결 <small>0</small></button>
+        <button type="button" role="tab" aria-selected={tab === 'open'} className={tab === 'open' ? 'is-selected' : ''} onClick={() => setTab('open')}>미체결 <small>{openOrders.length}</small></button>
       </div>
 
       <div className="portfolio-holdings" aria-live="polite">
         {tab === 'open' ? (
-          <div className="portfolio-empty-state"><strong>미체결 주문이 없어요</strong><span>지정가 주문을 접수하면 이곳에서 확인할 수 있어요.</span></div>
+          openOrders.length === 0 ? (
+            <div className="portfolio-empty-state"><strong>미체결 주문이 없어요</strong><span>지정가 주문을 접수하면 이곳에서 확인할 수 있어요.</span></div>
+          ) : openOrders.map((order) => {
+            const instrument = instruments.find((item) => item.code === order.instrumentCode) ?? instruments[0]
+            const directionLabel = order.direction === 'buy' ? '매수' : order.direction === 'sell' ? '매도' : order.direction === 'short' ? '공매도' : '상환'
+            return (
+              <div className="portfolio-holding-row is-open-order" key={order.id}>
+                <span><strong>{instrument.name}</strong><small>{directionLabel} 지정가 · 잔여 {order.remainingQuantity}주</small></span>
+                <span><strong>{formatWon(order.price)}</strong><small>{order.submittedAt}</small></span>
+              </div>
+            )
+          })
         ) : visibleHoldings.map((instrument) => {
           const quantity = tab === 'long' ? instrument.longQuantity ?? 0 : instrument.shortQuantity ?? 0
           return (
