@@ -24,11 +24,13 @@ type PortfolioTab = 'long' | 'short' | 'open'
 function SwipeSheet({
   edge,
   label,
+  sheetClassName = '',
   onClose,
   children,
 }: {
   edge: SheetEdge
   label: string
+  sheetClassName?: string
   onClose: () => void
   children: ReactNode
 }) {
@@ -127,7 +129,7 @@ function SwipeSheet({
       <button type="button" className="social-sheet-backdrop" aria-label={`${label} 닫기`} onClick={onClose} />
       <section
         ref={sheetRef}
-        className={`social-sheet social-sheet-${edge} ${isDragging ? 'is-dragging' : ''}`}
+        className={`social-sheet social-sheet-${edge} ${sheetClassName} ${isDragging ? 'is-dragging' : ''}`}
         style={{ transform: `translateY(${dragOffset}px)` }}
         role="dialog"
         aria-modal="true"
@@ -159,7 +161,7 @@ export function PortfolioSheet({
   const visibleHoldings = tab === 'long' ? longHoldings : shortHoldings
 
   return (
-    <SwipeSheet edge="bottom" label="내 잔고" onClose={onClose}>
+    <SwipeSheet edge="top" label="내 잔고" sheetClassName="social-sheet-portfolio" onClose={onClose}>
       <header className="portfolio-sheet-header">
         <span><strong>내 잔고</strong><small>오늘 {viewCount}번째 확인</small></span>
         <span className="portfolio-live-mark">방에 표시 중 · 👀</span>

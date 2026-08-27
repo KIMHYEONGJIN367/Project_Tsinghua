@@ -1,8 +1,18 @@
+@font-face {
+  font-family: "Pretendard Variable";
+  font-style: normal;
+  font-weight: 45 920;
+  font-display: swap;
+  src: url("./assets/fonts/PretendardVariable.woff2") format("woff2-variations");
+}
+
 :root {
+  --app-font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #ffffff;
   background: #050609;
-  font-family: Geist, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--app-font);
   font-synthesis: none;
+  font-variant-numeric: tabular-nums;
   text-rendering: optimizeLegibility;
 }
 
@@ -66,7 +76,7 @@ select {
 
 .status-time {
   color: #ffffff;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 14px;
   font-weight: 600;
   line-height: 1;
@@ -147,7 +157,7 @@ select {
 
 .title-block p {
   color: #6366f1;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 0.42px;
@@ -320,7 +330,7 @@ select {
 }
 
 .ticker-item > span:last-child {
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 12px;
 }
 
@@ -502,7 +512,7 @@ select {
   flex-shrink: 0;
   padding: 2px 6px;
   border-radius: 4px;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 10px;
   font-weight: 600;
   line-height: 1.3;
@@ -595,7 +605,7 @@ select {
   justify-content: space-between;
   overflow: hidden;
   color: #8f96a3;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 8.5px;
   line-height: 1;
   white-space: nowrap;
@@ -610,7 +620,7 @@ select {
   display: block;
   width: 100%;
   color: #8f96a3;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 8.5px;
   font-weight: 600;
   line-height: 1.35;
@@ -626,7 +636,7 @@ select {
   gap: 5px;
   overflow: hidden;
   color: #c7cfdb;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 9.5px;
   white-space: nowrap;
 }
@@ -917,7 +927,7 @@ body:has(.feed-shell) {
 .invest-performance-a,
 .invest-performance-b {
   color: #73767f;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 10px;
   text-align: right;
   white-space: nowrap;
@@ -1068,7 +1078,7 @@ body:has(.feed-shell) {
 .invest-holding-row-b strong {
   flex-shrink: 0;
   color: #202124;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 9.5px;
   font-weight: 400;
 }
@@ -1220,7 +1230,7 @@ body:has(.feed-shell) {
   align-items: flex-end;
   gap: 6px;
   color: #737b8b;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 8px;
   white-space: nowrap;
 }
@@ -1246,7 +1256,7 @@ body:has(.feed-shell) {
   border-radius: 50%;
   background: #635af6;
   color: #ffffff;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 9px;
   font-weight: 600;
   line-height: 1;
@@ -1305,7 +1315,7 @@ body:has(.feed-shell) {
 
 .chat-room-market-bar strong {
   color: #00e676;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 11px;
 }
 
@@ -1380,7 +1390,7 @@ body:has(.feed-shell) {
 
 .chat-stock-card span {
   color: #8f96a3;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 9px;
 }
 
@@ -1535,7 +1545,7 @@ body:has(.feed-shell) {
   border-radius: 4px;
   background: rgba(99, 90, 246, 0.12);
   color: #9b96ff;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 8px;
   line-height: 1;
 }
@@ -2272,7 +2282,7 @@ body:has(.splash-shell) {
 
 .trade-quantity-control strong {
   text-align: center;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 13px;
 }
 
@@ -2315,7 +2325,7 @@ body:has(.splash-shell) {
 
 .trade-estimate > strong {
   color: #202124;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 13px;
   text-align: right;
 }
@@ -2558,7 +2568,7 @@ body:has(.splash-shell) {
 
 .splash-content > strong {
   color: #b8323c;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 1.5px;
@@ -3025,7 +3035,7 @@ body:has(.splash-shell) {
 .ticket-capacity-grid strong {
   overflow: hidden;
   color: #363132;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 10px;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -3128,7 +3138,7 @@ body:has(.splash-shell) {
   outline: 0;
   background: transparent;
   color: #2c2829;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 12px;
   font-weight: 750;
   text-align: center;
@@ -3182,7 +3192,7 @@ body:has(.splash-shell) {
   outline: 0;
   background: transparent;
   color: #292526;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 13px;
   font-weight: 750;
   text-align: right;
@@ -3371,7 +3381,7 @@ body:has(.splash-shell) {
 .ticket-sticky-footer strong {
   overflow: hidden;
   color: #272324;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -3834,86 +3844,283 @@ body:has(.splash-shell) {
   font-size: 8px;
 }
 
-/* Room-level account access and social portfolio activity. */
-.chat-room-account-bar {
-  display: grid;
-  width: 100%;
-  height: 44px;
-  flex-shrink: 0;
-  grid-template-columns: minmax(0, 1fr) 104px;
-  gap: 1px;
-  border-bottom: 1px solid #efe7e1;
-  background: #efe7e1;
-}
-
-.chat-room-account-bar button {
-  min-width: 0;
-  padding: 0 13px;
-  border: 0;
-  background: #fff8f6;
-  color: #202124;
-}
-
-.chat-account-summary {
+/* Temporary account-header comparison. Keep the selector until a direction is chosen. */
+.chat-account-prototype {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  text-align: left;
+  width: 100%;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px 12px 8px;
+  border-bottom: 1px solid #eee7e1;
+  background: #fbfaf8;
 }
 
-.chat-account-summary span {
+.chat-account-prototype-switcher {
+  display: flex;
+  height: 25px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.chat-account-prototype-switcher > span {
+  color: #948a8b;
+  font-size: 7px;
+  font-weight: 650;
+}
+
+.chat-account-prototype-switcher > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+  padding: 2px;
+  border-radius: 8px;
+  background: #eeeae6;
+}
+
+.chat-account-prototype-switcher button {
+  height: 21px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #8a8081;
+  font-size: 7px;
+  font-weight: 700;
+}
+
+.chat-account-prototype-switcher button.is-selected {
+  background: #ffffff;
+  color: #202124;
+  box-shadow: 0 1px 5px rgba(70, 48, 50, 0.1);
+}
+
+.chat-account-panel {
+  width: 100%;
+  height: 78px;
   flex-shrink: 0;
-  color: #8a6f73;
-  font-size: 8px;
+  overflow: hidden;
+  border-radius: 14px;
+}
+
+.chat-account-panel.is-calm {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 102px;
+  grid-template-rows: 40px 38px;
+  border: 1px solid #e9e1db;
+  background: #ffffff;
+  box-shadow: 0 5px 16px rgba(72, 45, 48, 0.05);
+}
+
+.chat-account-calm-value {
+  display: grid;
+  min-width: 0;
+  grid-row: 1 / 3;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-content: center;
+  align-items: center;
+  gap: 3px 7px;
+  padding: 10px 12px;
+  border-right: 1px solid #eee8e3;
+}
+
+.chat-account-calm-value span {
+  grid-column: 1 / -1;
+  color: #8e8385;
+  font-size: 7px;
   font-weight: 600;
 }
 
-.chat-account-summary strong {
-  min-width: 0;
+.chat-account-calm-value strong {
   overflow: hidden;
-  flex: 1;
   color: #202124;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px;
-  font-weight: 750;
+  font-size: 14px;
+  font-weight: 760;
+  letter-spacing: -0.35px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.chat-account-summary em {
-  flex-shrink: 0;
+.chat-account-calm-value em {
+  justify-self: start;
+  padding: 3px 5px;
+  border-radius: 999px;
+  background: #fff0ef;
   color: #b8323c;
-  font-size: 9px;
+  font-size: 8px;
   font-style: normal;
-  font-weight: 700;
+  font-weight: 750;
 }
 
-.chat-ranking-button {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  grid-template-rows: auto auto;
-  align-content: center;
-  gap: 1px 4px;
-  text-align: left;
+.chat-account-calm-rank {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+  border-bottom: 1px solid #eee8e3;
+  background: #fffaf8;
 }
 
-.chat-ranking-button span {
-  color: #8a6f73;
+.chat-account-calm-rank span,
+.chat-account-calm-rank small {
+  color: #958a8c;
   font-size: 7px;
 }
 
-.chat-ranking-button strong {
+.chat-account-calm-rank strong {
   color: #b8323c;
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 780;
 }
 
-.chat-ranking-button b {
-  grid-column: 2;
-  grid-row: 1 / 3;
-  align-self: center;
-  color: #b8323c;
+.chat-account-calm-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 5px 6px;
+}
+
+.chat-account-calm-actions button {
+  border: 1px solid #e7ddd8;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #51494a;
+  font-size: 8px;
+  font-weight: 750;
+}
+
+.chat-account-calm-actions button:last-child {
+  border-color: #b8323c;
+  background: #b8323c;
+  color: #ffffff;
+}
+
+.chat-account-panel.is-arena {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 60px;
+  grid-template-rows: 48px 30px;
+  padding: 0 10px;
+  background:
+    radial-gradient(circle at 78% -20%, rgba(255, 255, 255, 0.2), transparent 42%),
+    linear-gradient(135deg, #822934 0%, #b8323c 58%, #ce5960 100%);
+  color: #ffffff;
+  box-shadow: 0 8px 20px rgba(142, 40, 49, 0.2);
+}
+
+.chat-account-arena-main {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-content: center;
+  align-items: center;
+  gap: 2px 7px;
+}
+
+.chat-account-arena-main > span {
+  grid-column: 1 / -1;
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 6px;
+  font-weight: 750;
+  letter-spacing: 0.7px;
+}
+
+.chat-account-arena-main > strong {
+  overflow: hidden;
   font-size: 14px;
-  font-weight: 400;
+  font-weight: 780;
+  letter-spacing: -0.3px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-account-arena-main > em {
+  justify-self: start;
+  padding: 2px 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 8px;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.chat-account-arena-rank {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-rows: auto 1fr;
+  align-content: center;
+  align-items: baseline;
+  margin: 7px 0 5px;
+  padding-left: 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.chat-account-arena-rank span {
+  grid-column: 1 / -1;
+  color: rgba(255, 255, 255, 0.66);
+  font-size: 6px;
+  font-weight: 750;
+  letter-spacing: 0.6px;
+}
+
+.chat-account-arena-rank strong {
+  font-size: 22px;
+  font-weight: 820;
+  line-height: 1;
+}
+
+.chat-account-arena-rank small {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 7px;
+}
+
+.chat-account-arena-footer {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.chat-account-arena-footer > span {
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.67);
+  font-size: 6.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-account-arena-footer > span strong {
+  color: #ffffff;
+  font-weight: 750;
+}
+
+.chat-account-arena-footer > div {
+  display: grid;
+  width: 92px;
+  flex-shrink: 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.chat-account-arena-footer button {
+  height: 23px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 7px;
+  font-weight: 750;
+}
+
+.chat-account-arena-footer button:last-child {
+  background: #ffffff;
+  color: #9c2d37;
 }
 
 .chat-view-presence {
@@ -4071,6 +4278,10 @@ body:has(.splash-shell) {
   animation: social-sheet-from-top 280ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 
+.social-sheet-top.social-sheet-portfolio {
+  height: 72%;
+}
+
 .social-sheet-drag-zone {
   display: flex;
   width: 100%;
@@ -4176,7 +4387,7 @@ body:has(.splash-shell) {
 
 .portfolio-nav-card strong {
   color: #202124;
-  font-family: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--app-font);
   font-size: 16px;
   font-weight: 750;
 }
