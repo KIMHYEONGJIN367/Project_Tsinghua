@@ -3,7 +3,6 @@ import { PortfolioSheet, RankingSheet } from './AccountSheets'
 import TradeDrafts from './TradeDrafts'
 import {
   CURRENT_RANK,
-  INITIAL_ASSET,
   TOTAL_ASSET,
   TOTAL_RETURN,
   formatReturn,
@@ -43,7 +42,6 @@ type ScreenKey = 'home' | 'chat-list' | 'chat-room' | 'splash'
 type NavKey = 'home' | 'chat' | 'invest' | 'portfolio' | 'my'
 
 type SocialViewKind = 'balance' | 'ranking'
-type AccountHeaderVariant = 'calm' | 'arena'
 
 type RoomTimelineItem =
   | { id: string; kind: 'message'; text: string; sentAt: string }
@@ -53,6 +51,7 @@ type RoomTimelineItem =
 type SocialViewTracker = { count: number; lastCountedAt: number; dateKey: string }
 
 const SOCIAL_VIEW_COOLDOWN_MS = 30_000
+const NEXT_RANK_RETURN = 28.4
 
 function isSocialViewMilestone(count: number) {
   return count === 3 || (count >= 5 && count % 5 === 0)
@@ -517,7 +516,6 @@ function ChatRoomScreen({
   const [isTradeSheetOpen, setIsTradeSheetOpen] = useState(false)
   const [isPortfolioSheetOpen, setIsPortfolioSheetOpen] = useState(false)
   const [isRankingSheetOpen, setIsRankingSheetOpen] = useState(false)
-  const [accountHeaderVariant, setAccountHeaderVariant] = useState<AccountHeaderVariant>('calm')
   const [isTradeSheetDragging, setIsTradeSheetDragging] = useState(false)
   const [tradeSheetDragY, setTradeSheetDragY] = useState(0)
   const messageInputRef = useRef<HTMLTextAreaElement>(null)
@@ -679,53 +677,26 @@ function ChatRoomScreen({
             <button type="button" aria-label="더 보기">⋮</button>
           </div>
         </header>
-        <section className="chat-account-prototype" aria-label="상단 자산 UI 시안 비교">
-          <div className="chat-account-prototype-switcher">
-            <span>상단 UI 시안</span>
-            <div>
-              <button type="button" aria-pressed={accountHeaderVariant === 'calm'} className={accountHeaderVariant === 'calm' ? 'is-selected' : ''} onClick={() => setAccountHeaderVariant('calm')}>1 · 금융형</button>
-              <button type="button" aria-pressed={accountHeaderVariant === 'arena'} className={accountHeaderVariant === 'arena' ? 'is-selected' : ''} onClick={() => setAccountHeaderVariant('arena')}>2 · 게임형</button>
+        <section className="chat-account-hud" aria-label="내 대회 현황">
+          <div className="chat-account-hud-card">
+            <div className="chat-account-hud-main">
+              <span>내 총자산</span>
+              <strong>{formatWon(TOTAL_ASSET)}</strong>
+              <em>{formatReturn(TOTAL_RETURN)}</em>
             </div>
-          </div>
-
-          {accountHeaderVariant === 'calm' ? (
-            <div className="chat-account-panel is-calm" aria-label="금융형 자산 요약">
-              <div className="chat-account-calm-value">
-                <span>내 총자산</span>
-                <strong>{formatWon(TOTAL_ASSET)}</strong>
-                <em>{formatReturn(TOTAL_RETURN)}</em>
-              </div>
-              <div className="chat-account-calm-rank">
-                <span>현재 순위</span>
-                <strong>{CURRENT_RANK}위</strong>
-                <small>4명 중</small>
-              </div>
-              <div className="chat-account-calm-actions">
+            <div className="chat-account-hud-rank" aria-label={`현재 ${CURRENT_RANK}위, 4명 중`}>
+              <span>현재 순위</span>
+              <strong><b>{CURRENT_RANK}</b>위</strong>
+              <small>4명 중</small>
+            </div>
+            <div className="chat-account-hud-footer">
+              <span className="chat-account-rank-gap"><b aria-hidden="true">↑</b><span>2위까지 <strong>{(NEXT_RANK_RETURN - TOTAL_RETURN).toFixed(1)}%p</strong></span></span>
+              <div>
                 <button type="button" onClick={openRankingSheet}>순위</button>
                 <button type="button" onClick={openPortfolioSheet}>잔고</button>
               </div>
             </div>
-          ) : (
-            <div className="chat-account-panel is-arena" aria-label="게임형 자산 요약">
-              <div className="chat-account-arena-main">
-                <span>MY NAV</span>
-                <strong>{formatWon(TOTAL_ASSET)}</strong>
-                <em>{formatReturn(TOTAL_RETURN)}</em>
-              </div>
-              <div className="chat-account-arena-rank">
-                <span>RANK</span>
-                <strong>{CURRENT_RANK}</strong>
-                <small>/ 4</small>
-              </div>
-              <div className="chat-account-arena-footer">
-                <span>대회 시작 이후 <strong>+{formatWon(TOTAL_ASSET - INITIAL_ASSET)}</strong></span>
-                <div>
-                  <button type="button" onClick={openRankingSheet}>순위</button>
-                  <button type="button" onClick={openPortfolioSheet}>잔고</button>
-                </div>
-              </div>
-            </div>
-          )}
+          </div>
         </section>
         <div className="chat-date-divider">오늘, 2026년 2월 24일</div>
         <section
