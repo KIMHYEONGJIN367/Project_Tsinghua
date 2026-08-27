@@ -9,6 +9,10 @@ export type Instrument = {
 
 export type TradeDirection = 'buy' | 'sell' | 'short' | 'cover'
 
+export type TradeEntryIntent =
+  | { requestId: string; kind: 'position'; direction: 'sell' | 'cover'; instrumentCode: string }
+  | { requestId: string; kind: 'open-order'; orderId: string }
+
 export type OpenOrder = {
   id: string
   instrumentCode: string

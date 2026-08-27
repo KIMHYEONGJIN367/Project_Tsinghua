@@ -10,6 +10,7 @@ import {
   initialOpenOrders,
   type OpenOrder,
   type OpenOrderUpdate,
+  type TradeEntryIntent,
 } from './tradingData'
 import investBattery from './assets/invest-ios-battery.svg'
 import investHome from './assets/invest-home.svg'
@@ -513,6 +514,7 @@ function ChatRoomScreen({
 }) {
   const [messageDraft, setMessageDraft] = useState('')
   const [isTradeSheetOpen, setIsTradeSheetOpen] = useState(false)
+  const [tradeEntryIntent, setTradeEntryIntent] = useState<TradeEntryIntent | null>(null)
   const [isPortfolioSheetOpen, setIsPortfolioSheetOpen] = useState(false)
   const [isRankingSheetOpen, setIsRankingSheetOpen] = useState(false)
   const [isTradeSheetDragging, setIsTradeSheetDragging] = useState(false)
@@ -622,12 +624,23 @@ function ChatRoomScreen({
     messageInputRef.current?.focus()
   }
 
-  const openTradeSheet = () => {
+  const openTradeSheet = (intent: TradeEntryIntent | null = null) => {
+    setTradeEntryIntent(intent)
     setIsTradeSheetDragging(false)
     setIsTradeSheetDismissing(false)
     setTradeSheetDragY(0)
     tradeSheetDragYRef.current = 0
     setIsTradeSheetOpen(true)
+  }
+
+  const openPositionTradeFromPortfolio = (instrumentCode: string, direction: 'sell' | 'cover') => {
+    setIsPortfolioSheetOpen(false)
+    openTradeSheet({ requestId: crypto.randomUUID(), kind: 'position', direction, instrumentCode })
+  }
+
+  const openOrderManagerFromPortfolio = (orderId: string) => {
+    setIsPortfolioSheetOpen(false)
+    openTradeSheet({ requestId: crypto.randomUUID(), kind: 'open-order', orderId })
   }
 
   const closeTradeSheet = () => {
@@ -883,14 +896,14 @@ function ChatRoomScreen({
                 <div className="trade-sheet-grabber" aria-hidden="true" />
               </div>
               <div className="trade-sheet-canvas">
-                <TradeDrafts shortAllowed onOpenPortfolio={openPortfolioSheet} openOrders={openOrders} onUpdateOpenOrder={onUpdateOpenOrder} onCancelOpenOrder={onCancelOpenOrder} />
+                <TradeDrafts shortAllowed tradeEntryIntent={tradeEntryIntent} onOpenPortfolio={openPortfolioSheet} openOrders={openOrders} onUpdateOpenOrder={onUpdateOpenOrder} onCancelOpenOrder={onCancelOpenOrder} />
               </div>
             </div>
           </section>
         </div>
       )}
       {isPortfolioSheetOpen && (
-        <PortfolioSheet viewCount={viewCounts.balance} openOrders={openOrders} onClose={() => setIsPortfolioSheetOpen(false)} onShare={sharePortfolio} />
+        <PortfolioSheet viewCount={viewCounts.balance} openOrders={openOrders} onClose={() => setIsPortfolioSheetOpen(false)} onShare={sharePortfolio} onOpenPosition={openPositionTradeFromPortfolio} onOpenOrder={openOrderManagerFromPortfolio} />
       )}
       {isRankingSheetOpen && (
         <RankingSheet viewCount={viewCounts.ranking} onClose={() => setIsRankingSheetOpen(false)} />

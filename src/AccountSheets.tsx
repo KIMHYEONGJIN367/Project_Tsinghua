@@ -163,11 +163,15 @@ export function PortfolioSheet({
   openOrders,
   onClose,
   onShare,
+  onOpenPosition,
+  onOpenOrder,
 }: {
   viewCount: number
   openOrders: OpenOrder[]
   onClose: () => void
   onShare: () => void
+  onOpenPosition: (instrumentCode: string, direction: 'sell' | 'cover') => void
+  onOpenOrder: (orderId: string) => void
 }) {
   const [tab, setTab] = useState<PortfolioTab>('long')
   const longHoldings = instruments.filter((instrument) => instrument.longQuantity)
@@ -206,19 +210,22 @@ export function PortfolioSheet({
             const instrument = instruments.find((item) => item.code === order.instrumentCode) ?? instruments[0]
             const directionLabel = order.direction === 'buy' ? '매수' : order.direction === 'sell' ? '매도' : order.direction === 'short' ? '공매도' : '상환'
             return (
-              <div className="portfolio-holding-row is-open-order" key={order.id}>
-                <span><strong>{instrument.name}</strong><small>{directionLabel} 지정가 · 잔여 {order.remainingQuantity}주</small></span>
-                <span><strong>{formatWon(order.price)}</strong><small>{order.submittedAt}</small></span>
-              </div>
+              <button type="button" className="portfolio-holding-row is-open-order" aria-label={`${instrument.name} ${directionLabel} 미체결 주문 관리`} onClick={() => onOpenOrder(order.id)} key={order.id}>
+                <span className="portfolio-holding-main"><strong>{instrument.name}</strong><small>{directionLabel} 지정가 · 잔여 {order.remainingQuantity}주</small></span>
+                <span className="portfolio-holding-value"><strong>{formatWon(order.price)}</strong><small>{order.submittedAt}</small></span>
+                <b className="portfolio-row-action">관리 <span aria-hidden="true">〉</span></b>
+              </button>
             )
           })
         ) : visibleHoldings.map((instrument) => {
           const quantity = tab === 'long' ? instrument.longQuantity ?? 0 : instrument.shortQuantity ?? 0
+          const actionLabel = tab === 'long' ? '매도' : '상환'
           return (
-            <div className="portfolio-holding-row" key={`${tab}-${instrument.code}`}>
-              <span><strong>{instrument.name}</strong><small>{instrument.code} · {quantity}주</small></span>
-              <span><strong>{formatWon(instrument.price * quantity)}</strong><small className={instrument.change >= 0 ? 'is-positive' : 'is-negative'}>{instrument.change >= 0 ? '+' : ''}{instrument.change}%</small></span>
-            </div>
+            <button type="button" className="portfolio-holding-row" aria-label={`${instrument.name} ${actionLabel} 화면 열기`} onClick={() => onOpenPosition(instrument.code, tab === 'long' ? 'sell' : 'cover')} key={`${tab}-${instrument.code}`}>
+              <span className="portfolio-holding-main"><strong>{instrument.name}</strong><small>{instrument.code} · {quantity}주</small></span>
+              <span className="portfolio-holding-value"><strong>{formatWon(instrument.price * quantity)}</strong><small className={instrument.change >= 0 ? 'is-positive' : 'is-negative'}>{instrument.change >= 0 ? '+' : ''}{instrument.change}%</small></span>
+              <b className="portfolio-row-action">{actionLabel} <span aria-hidden="true">〉</span></b>
+            </button>
           )
         })}
       </div>

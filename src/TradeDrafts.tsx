@@ -7,6 +7,7 @@ import {
   type OpenOrder,
   type OpenOrderUpdate,
   type TradeDirection,
+  type TradeEntryIntent,
 } from './tradingData'
 
 type OrderType = 'market' | 'limit'
@@ -187,14 +188,16 @@ function QuoteAndCapacity({ direction, instrument, maxQuantity }: {
   )
 }
 
-function OpenOrdersManager({ openOrders, onUpdate, onCancel, onClose }: {
+function OpenOrdersManager({ initialOrderId, openOrders, onUpdate, onCancel, onClose }: {
+  initialOrderId?: string | null
   openOrders: OpenOrder[]
   onUpdate: (orderId: string, update: OpenOrderUpdate) => void
   onCancel: (orderId: string) => void
   onClose: () => void
 }) {
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(openOrders[0]?.id ?? null)
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(initialOrderId ?? openOrders[0]?.id ?? null)
   const [mode, setMode] = useState<'summary' | 'edit' | 'cancel'>('summary')
+  const [isBatchCancelConfirmOpen, setIsBatchCancelConfirmOpen] = useState(false)
   const selectedOrder = openOrders.find((order) => order.id === selectedOrderId) ?? null
   const [draftPrice, setDraftPrice] = useState(selectedOrder?.price ?? 0)
   const [draftQuantity, setDraftQuantity] = useState(selectedOrder?.remainingQuantity ?? 1)
@@ -203,6 +206,18 @@ function OpenOrdersManager({ openOrders, onUpdate, onCancel, onClose }: {
   const sheetRef = useRef<HTMLElement>(null)
   const dragStartYRef = useRef<number | null>(null)
   const dragOffsetRef = useRef(0)
+
+  useEffect(() => {
+    if (initialOrderId && openOrders.some((order) => order.id === initialOrderId)) {
+      setSelectedOrderId(initialOrderId)
+    }
+  }, [initialOrderId])
+
+  useEffect(() => {
+    if (openOrders.length > 0) return
+    setSelectedOrderId(null)
+    setIsBatchCancelConfirmOpen(false)
+  }, [openOrders.length])
 
   useEffect(() => {
     if (!selectedOrder) {
@@ -283,6 +298,7 @@ function OpenOrdersManager({ openOrders, onUpdate, onCancel, onClose }: {
   }
 
   const selectOrder = (order: OpenOrder) => {
+    setIsBatchCancelConfirmOpen(false)
     setSelectedOrderId((currentId) => currentId === order.id ? null : order.id)
   }
 
@@ -307,6 +323,13 @@ function OpenOrdersManager({ openOrders, onUpdate, onCancel, onClose }: {
     setMode('summary')
   }
 
+  const cancelAllOrders = () => {
+    openOrders.forEach((order) => onCancel(order.id))
+    setSelectedOrderId(null)
+    setMode('summary')
+    setIsBatchCancelConfirmOpen(false)
+  }
+
   return (
     <div className="ticket-orders-layer">
       <button type="button" className="ticket-orders-backdrop" aria-label="미체결 주문 닫기" onClick={onClose} />
@@ -325,8 +348,21 @@ function OpenOrdersManager({ openOrders, onUpdate, onCancel, onClose }: {
         ><span aria-hidden="true" /></button>
         <header className="ticket-orders-header">
           <span><strong>미체결 주문</strong><small>가격·수량을 바로 정정하거나 취소할 수 있어요.</small></span>
-          <b>{openOrders.length}건</b>
+          <div className="ticket-orders-header-actions">
+            <b>{openOrders.length}건</b>
+            <button type="button" disabled={openOrders.length === 0} aria-label={`미체결 주문 ${openOrders.length}건 일괄취소`} onClick={() => {
+              setMode('summary')
+              setIsBatchCancelConfirmOpen(true)
+            }}>일괄취소</button>
+          </div>
         </header>
+
+        {isBatchCancelConfirmOpen && (
+          <div className="ticket-orders-batch-confirm" role="alert">
+            <span><strong>미체결 {openOrders.length}건을 모두 취소할까요?</strong><small>이미 체결된 수량은 취소되지 않아요.</small></span>
+            <div><button type="button" onClick={() => setIsBatchCancelConfirmOpen(false)}>돌아가기</button><button type="button" onClick={cancelAllOrders}>전체 취소</button></div>
+          </div>
+        )}
 
         {openOrders.length === 0 ? (
           <div className="ticket-orders-empty"><strong>미체결 주문이 없어요</strong><span>새 주문을 접수하면 이곳에서 관리할 수 있어요.</span></div>
@@ -512,8 +548,9 @@ function HoldingsPicker({ direction, selectedInstrument, onSelect, onClose }: {
   )
 }
 
-export default function TradeDrafts({ shortAllowed = true, onOpenPortfolio, openOrders, onUpdateOpenOrder, onCancelOpenOrder }: {
+export default function TradeDrafts({ shortAllowed = true, tradeEntryIntent, onOpenPortfolio, openOrders, onUpdateOpenOrder, onCancelOpenOrder }: {
   shortAllowed?: boolean
+  tradeEntryIntent: TradeEntryIntent | null
   onOpenPortfolio: () => void
   openOrders: OpenOrder[]
   onUpdateOpenOrder: (orderId: string, update: OpenOrderUpdate) => void
@@ -529,6 +566,7 @@ export default function TradeDrafts({ shortAllowed = true, onOpenPortfolio, open
   const [selectedPercent, setSelectedPercent] = useState<number | null>(null)
   const [isHoldingsPickerOpen, setIsHoldingsPickerOpen] = useState(false)
   const [isOpenOrdersManagerOpen, setIsOpenOrdersManagerOpen] = useState(false)
+  const [openOrdersManagerTargetId, setOpenOrdersManagerTargetId] = useState<string | null>(null)
 
   const effectivePrice = orderType === 'market' ? selectedInstrument.price : limitPrice
   const maxQuantity = useMemo(() => {
@@ -541,6 +579,44 @@ export default function TradeDrafts({ shortAllowed = true, onOpenPortfolio, open
   useEffect(() => {
     setQuantity((currentQuantity) => Math.max(1, Math.min(maxQuantity, currentQuantity)))
   }, [maxQuantity])
+
+  useEffect(() => {
+    if (!tradeEntryIntent) return
+
+    if (tradeEntryIntent.kind === 'open-order') {
+      const order = openOrders.find((item) => item.id === tradeEntryIntent.orderId)
+      if (!order) return
+      const instrument = instruments.find((item) => item.code === order.instrumentCode) ?? instruments[0]
+
+      setDirection(order.direction)
+      setSelectedInstrument(instrument)
+      setSearchQuery(instrument.name)
+      setSearchFocused(false)
+      setOrderType('limit')
+      setLimitPrice(order.price)
+      setQuantity(order.remainingQuantity)
+      setSelectedPercent(null)
+      setIsHoldingsPickerOpen(false)
+      setOpenOrdersManagerTargetId(order.id)
+      setIsOpenOrdersManagerOpen(true)
+      return
+    }
+
+    const instrument = instruments.find((item) => item.code === tradeEntryIntent.instrumentCode)
+    if (!instrument) return
+
+    setDirection(tradeEntryIntent.direction)
+    setSelectedInstrument(instrument)
+    setSearchQuery(instrument.name)
+    setSearchFocused(false)
+    setOrderType('market')
+    setLimitPrice(instrument.price)
+    setQuantity(1)
+    setSelectedPercent(null)
+    setIsHoldingsPickerOpen(false)
+    setOpenOrdersManagerTargetId(null)
+    setIsOpenOrdersManagerOpen(false)
+  }, [tradeEntryIntent?.requestId])
 
   const selectInstrument = (instrument: Instrument) => {
     setSelectedInstrument(instrument)
@@ -598,7 +674,10 @@ export default function TradeDrafts({ shortAllowed = true, onOpenPortfolio, open
             className="ticket-open-orders-action"
             disabled={openOrders.length === 0}
             aria-label={openOrders.length > 0 ? `미체결 주문 ${openOrders.length}건 관리` : '미체결 주문 없음'}
-            onClick={() => setIsOpenOrdersManagerOpen(true)}
+            onClick={() => {
+              setOpenOrdersManagerTargetId(null)
+              setIsOpenOrdersManagerOpen(true)
+            }}
           >
             미체결 <span>{openOrders.length}</span>
           </button>
@@ -606,7 +685,10 @@ export default function TradeDrafts({ shortAllowed = true, onOpenPortfolio, open
         </div>
       </footer>
       {isHoldingsPickerOpen && <HoldingsPicker direction={direction} selectedInstrument={selectedInstrument} onSelect={selectInstrument} onClose={() => setIsHoldingsPickerOpen(false)} />}
-      {isOpenOrdersManagerOpen && <OpenOrdersManager openOrders={openOrders} onUpdate={onUpdateOpenOrder} onCancel={onCancelOpenOrder} onClose={() => setIsOpenOrdersManagerOpen(false)} />}
+      {isOpenOrdersManagerOpen && <OpenOrdersManager initialOrderId={openOrdersManagerTargetId} openOrders={openOrders} onUpdate={onUpdateOpenOrder} onCancel={onCancelOpenOrder} onClose={() => {
+        setOpenOrdersManagerTargetId(null)
+        setIsOpenOrdersManagerOpen(false)
+      }} />}
     </div>
   )
 }
