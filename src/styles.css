@@ -3480,13 +3480,14 @@ body:has(.splash-shell) {
 }
 
 .ticket-orders-sheet {
+  --keyboard-inset: 0px;
   position: absolute;
   right: 0;
-  bottom: 0;
+  bottom: var(--keyboard-inset);
   left: 0;
   display: flex;
-  max-height: 88%;
-  min-height: 62%;
+  max-height: min(88%, calc(100% - var(--keyboard-inset)));
+  min-height: min(62%, calc(100% - var(--keyboard-inset)));
   flex-direction: column;
   overflow: hidden;
   padding: 0 14px 12px;
@@ -3694,7 +3695,7 @@ body:has(.splash-shell) {
 }
 
 .ticket-order-actions,
-.ticket-order-edit > div,
+.ticket-order-edit-actions,
 .ticket-order-cancel-confirm > div {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3702,7 +3703,7 @@ body:has(.splash-shell) {
 }
 
 .ticket-order-actions button,
-.ticket-order-edit > div button,
+.ticket-order-edit-actions button,
 .ticket-order-cancel-confirm button {
   height: 34px;
   border: 1px solid #dfd6d0;
@@ -3714,7 +3715,7 @@ body:has(.splash-shell) {
 }
 
 .ticket-order-actions button:first-child,
-.ticket-order-edit > div button:last-child {
+.ticket-order-edit-actions button:last-child {
   border-color: #b8323c;
   background: #b8323c;
   color: #ffffff;
@@ -3728,29 +3729,76 @@ body:has(.splash-shell) {
 
 .ticket-order-edit {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 6px;
 }
 
-.ticket-order-edit label {
-  display: grid;
+.ticket-order-edit-field {
+  display: flex;
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr) auto;
-  grid-template-rows: auto auto;
-  gap: 2px 4px;
+  flex-direction: column;
+  gap: 5px;
   padding: 7px 8px;
   border: 1px solid #e4dcd6;
   border-radius: 9px;
   background: #ffffff;
 }
 
-.ticket-order-edit label span {
-  grid-column: 1 / -1;
+.ticket-order-edit-field > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   color: #8f8586;
   font-size: 7px;
 }
 
-.ticket-order-edit input {
+.ticket-order-edit-field > span strong {
+  color: #625a5b;
+  font-size: 7.5px;
+}
+
+.ticket-order-edit-field > span small {
+  color: #a09798;
+  font-size: 7px;
+}
+
+.ticket-order-stepper {
+  display: grid;
+  height: 38px;
+  grid-template-columns: 38px minmax(0, 1fr) 38px;
+  overflow: hidden;
+  border: 1px solid #e4dcd6;
+  border-radius: 9px;
+  background: #ffffff;
+}
+
+.ticket-order-stepper > button {
+  padding: 0;
+  border: 0;
+  background: #faf7f4;
+  color: #b8323c;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.ticket-order-stepper > button:disabled {
+  color: #c8bfc0;
+  cursor: default;
+}
+
+.ticket-order-stepper label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  border-right: 1px solid #eee7e2;
+  border-left: 1px solid #eee7e2;
+  background: #ffffff;
+}
+
+.ticket-order-stepper input {
   width: 100%;
   min-width: 0;
   padding: 0;
@@ -3758,19 +3806,17 @@ body:has(.splash-shell) {
   outline: 0;
   background: transparent;
   color: #2f2a2b;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 750;
+  text-align: right;
+  scroll-margin: 150px 0;
 }
 
-.ticket-order-edit label small {
+.ticket-order-stepper label small {
   align-self: center;
+  padding-right: 9px;
   color: #817778;
   font-size: 7px;
-}
-
-.ticket-order-edit > p,
-.ticket-order-edit > div {
-  grid-column: 1 / -1;
 }
 
 .ticket-order-edit > p {

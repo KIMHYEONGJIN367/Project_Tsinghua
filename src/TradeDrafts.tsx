@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FocusEvent as ReactFocusEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import {
   ORDERABLE_CASH,
   formatWon,
@@ -20,6 +20,28 @@ const directionMeta: Record<TradeDirection, {
   sell: { tabLabel: '매도', searchLabel: '내 Long 보유종목', quantityBasis: '보유 수량 기준' },
   short: { tabLabel: '공매도', searchLabel: '공매도 가능 종목 검색', quantityBasis: '주문 가능 금액 기준' },
   cover: { tabLabel: '상환', searchLabel: '내 Short 보유종목', quantityBasis: 'Short 보유 수량 기준' },
+}
+
+function getKrxTickSize(price: number) {
+  if (price < 2_000) return 1
+  if (price < 5_000) return 5
+  if (price < 20_000) return 10
+  if (price < 50_000) return 50
+  if (price < 200_000) return 100
+  if (price < 500_000) return 500
+  return 1_000
+}
+
+function normalizeKrxPrice(price: number) {
+  const safePrice = Math.max(1, price)
+  const tickSize = getKrxTickSize(safePrice)
+  return Math.max(1, Math.round(safePrice / tickSize) * tickSize)
+}
+
+function moveKrxPriceByTick(price: number, direction: -1 | 1) {
+  const normalizedPrice = normalizeKrxPrice(price)
+  const referencePrice = direction === -1 ? Math.max(1, normalizedPrice - 1) : normalizedPrice
+  return Math.max(1, normalizedPrice + getKrxTickSize(referencePrice) * direction)
 }
 
 function DirectionTabs({ direction, onChange, shortAllowed }: {
@@ -235,6 +257,25 @@ function OpenOrdersManager({ openOrders, onUpdate, onCancel, onClose }: {
     }
   }, [onClose])
 
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+
+    const syncKeyboardInset = () => {
+      const keyboardInset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+      sheetRef.current?.style.setProperty('--keyboard-inset', `${keyboardInset}px`)
+    }
+
+    syncKeyboardInset()
+    viewport.addEventListener('resize', syncKeyboardInset)
+    viewport.addEventListener('scroll', syncKeyboardInset)
+    return () => {
+      viewport.removeEventListener('resize', syncKeyboardInset)
+      viewport.removeEventListener('scroll', syncKeyboardInset)
+      sheetRef.current?.style.removeProperty('--keyboard-inset')
+    }
+  }, [])
+
   const startDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
     event.preventDefault()
     dragStartYRef.current = event.clientY
@@ -248,10 +289,15 @@ function OpenOrdersManager({ openOrders, onUpdate, onCancel, onClose }: {
   const applyCorrection = () => {
     if (!selectedOrder) return
     onUpdate(selectedOrder.id, {
-      price: Math.max(100, draftPrice),
+      price: normalizeKrxPrice(draftPrice),
       remainingQuantity: Math.max(1, draftQuantity),
     })
     setMode('summary')
+  }
+
+  const revealEditInput = (event: ReactFocusEvent<HTMLInputElement>) => {
+    const input = event.currentTarget
+    window.setTimeout(() => input.scrollIntoView({ behavior: 'smooth', block: 'center' }), 180)
   }
 
   const cancelOrder = () => {
@@ -316,10 +362,24 @@ function OpenOrdersManager({ openOrders, onUpdate, onCancel, onClose }: {
 
                       {mode === 'edit' && (
                         <div className="ticket-order-edit">
-                          <label><span>정정 가격</span><input aria-label="정정 가격" inputMode="numeric" value={draftPrice.toLocaleString('ko-KR')} onChange={(event) => setDraftPrice(Number(event.target.value.replace(/[^0-9]/g, '')) || 0)} /><small>원</small></label>
-                          <label><span>정정 잔여 수량</span><input aria-label="정정 잔여 수량" inputMode="numeric" value={draftQuantity.toLocaleString('ko-KR')} onChange={(event) => setDraftQuantity(Number(event.target.value.replace(/[^0-9]/g, '')) || 0)} /><small>주</small></label>
+                          <div className="ticket-order-edit-field">
+                            <span><strong>정정 가격</strong><small>1틱 {getKrxTickSize(normalizeKrxPrice(draftPrice)).toLocaleString('ko-KR')}원</small></span>
+                            <div className="ticket-order-stepper">
+                              <button type="button" aria-label="정정 가격 1틱 내리기" onClick={() => setDraftPrice((price) => moveKrxPriceByTick(price, -1))}>−</button>
+                              <label><input aria-label="정정 가격" inputMode="numeric" enterKeyHint="done" value={draftPrice.toLocaleString('ko-KR')} onFocus={revealEditInput} onBlur={() => setDraftPrice((price) => normalizeKrxPrice(price))} onChange={(event) => setDraftPrice(Number(event.target.value.replace(/[^0-9]/g, '')) || 0)} /><small>원</small></label>
+                              <button type="button" aria-label="정정 가격 1틱 올리기" onClick={() => setDraftPrice((price) => moveKrxPriceByTick(price, 1))}>＋</button>
+                            </div>
+                          </div>
+                          <div className="ticket-order-edit-field">
+                            <span><strong>정정 잔여 수량</strong><small>1주 단위</small></span>
+                            <div className="ticket-order-stepper">
+                              <button type="button" aria-label="정정 잔여 수량 1주 줄이기" disabled={draftQuantity <= 1} onClick={() => setDraftQuantity((quantity) => Math.max(1, quantity - 1))}>−</button>
+                              <label><input aria-label="정정 잔여 수량" inputMode="numeric" enterKeyHint="done" value={draftQuantity.toLocaleString('ko-KR')} onFocus={revealEditInput} onBlur={() => setDraftQuantity((quantity) => Math.max(1, quantity))} onChange={(event) => setDraftQuantity(Number(event.target.value.replace(/[^0-9]/g, '')) || 0)} /><small>주</small></label>
+                              <button type="button" aria-label="정정 잔여 수량 1주 늘리기" onClick={() => setDraftQuantity((quantity) => Math.max(1, quantity + 1))}>＋</button>
+                            </div>
+                          </div>
                           <p>부분 체결분은 바뀌지 않고 남은 수량만 정정돼요.</p>
-                          <div><button type="button" onClick={() => setMode('summary')}>돌아가기</button><button type="button" onClick={applyCorrection}>정정 적용</button></div>
+                          <div className="ticket-order-edit-actions"><button type="button" onClick={() => setMode('summary')}>돌아가기</button><button type="button" onClick={applyCorrection}>정정 적용</button></div>
                         </div>
                       )}
 
