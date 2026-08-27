@@ -660,7 +660,6 @@ function ChatRoomScreen({
   }
 
   const openPortfolioSheet = () => {
-    closeTradeSheet()
     setIsRankingSheetOpen(false)
     onRecordSocialView('balance')
     setIsPortfolioSheetOpen(true)

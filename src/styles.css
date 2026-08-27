@@ -2720,65 +2720,6 @@ body:has(.splash-shell) {
   box-shadow: 0 2px 7px rgba(105, 83, 168, 0.2);
 }
 
-.ticket-order-management {
-  display: flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 3px 2px;
-}
-
-.ticket-order-management > span {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.ticket-order-management > span strong {
-  color: #51494a;
-  font-size: 9px;
-}
-
-.ticket-order-management > span small {
-  color: #948a8b;
-  font-size: 7px;
-}
-
-.ticket-order-management > button {
-  display: flex;
-  height: 30px;
-  flex-shrink: 0;
-  align-items: center;
-  gap: 5px;
-  padding: 0 8px 0 10px;
-  border: 1px solid #e8dcd8;
-  border-radius: 999px;
-  background: #fff8f6;
-  color: #7d6f71;
-  font-size: 8px;
-  font-weight: 700;
-}
-
-.ticket-order-management > button b {
-  display: grid;
-  min-width: 18px;
-  height: 18px;
-  place-items: center;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: #b8323c;
-  color: #ffffff;
-  font-size: 8px;
-}
-
-.ticket-order-management > button > span {
-  color: #b8323c;
-  font-size: 11px;
-  font-weight: 400;
-}
-
 .ticket-instrument-section,
 .ticket-order-type-section,
 .ticket-quantity-section,
@@ -3395,8 +3336,8 @@ body:has(.splash-shell) {
 
 .ticket-footer-actions {
   display: grid;
-  grid-template-columns: 76px minmax(0, 1fr);
-  gap: 8px;
+  grid-template-columns: 76px 76px minmax(0, 1fr);
+  gap: 7px;
 }
 
 .ticket-footer-actions button {
@@ -3407,10 +3348,42 @@ body:has(.splash-shell) {
   font-weight: 750;
 }
 
-.ticket-balance-action {
+.ticket-balance-action,
+.ticket-open-orders-action {
   border: 1px solid #dfd6d0;
   background: #ffffff;
   color: #4d4647;
+}
+
+.ticket-open-orders-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.ticket-open-orders-action span {
+  display: grid;
+  min-width: 16px;
+  height: 16px;
+  place-items: center;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #fff1f0;
+  color: #b8323c;
+  font-size: 7px;
+}
+
+.ticket-open-orders-action:disabled {
+  border-color: #e8e1dc;
+  background: #f4f1ee;
+  color: #aaa0a1;
+  cursor: default;
+}
+
+.ticket-open-orders-action:disabled span {
+  background: #e8e2dd;
+  color: #aaa0a1;
 }
 
 .ticket-primary-action {

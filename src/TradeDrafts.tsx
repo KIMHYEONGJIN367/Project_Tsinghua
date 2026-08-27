@@ -522,10 +522,6 @@ export default function TradeDrafts({ shortAllowed = true, onOpenPortfolio, open
     <div className="ticket-prototypes">
       <div className="ticket-scroll-area">
         <DirectionTabs direction={direction} onChange={selectDirection} shortAllowed={shortAllowed} />
-        <div className="ticket-order-management">
-          <span><strong>주문 관리</strong><small>체결 전에는 정정·취소할 수 있어요.</small></span>
-          <button type="button" onClick={() => setIsOpenOrdersManagerOpen(true)}>미체결 <b>{openOrders.length}</b><span aria-hidden="true">〉</span></button>
-        </div>
         <InstrumentAccess direction={direction} selectedInstrument={selectedInstrument} searchQuery={searchQuery} searchFocused={searchFocused} onSearchQueryChange={setSearchQuery} onSearchFocusChange={setSearchFocused} onSelectInstrument={selectInstrument} onOpenAllHoldings={() => setIsHoldingsPickerOpen(true)} />
         <div className="ticket-prototype-stack">
           <QuoteAndCapacity direction={direction} instrument={selectedInstrument} maxQuantity={maxQuantity} />
@@ -537,6 +533,15 @@ export default function TradeDrafts({ shortAllowed = true, onOpenPortfolio, open
         <span className="ticket-footer-estimate"><small>예상 주문금액</small><strong>{formatWon(estimatedAmount)}</strong></span>
         <div className="ticket-footer-actions">
           <button type="button" className="ticket-balance-action" onClick={onOpenPortfolio}>잔고</button>
+          <button
+            type="button"
+            className="ticket-open-orders-action"
+            disabled={openOrders.length === 0}
+            aria-label={openOrders.length > 0 ? `미체결 주문 ${openOrders.length}건 관리` : '미체결 주문 없음'}
+            onClick={() => setIsOpenOrdersManagerOpen(true)}
+          >
+            미체결 <span>{openOrders.length}</span>
+          </button>
           <button type="button" className="ticket-primary-action">{directionMeta[direction].tabLabel}</button>
         </div>
       </footer>
