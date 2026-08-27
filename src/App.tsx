@@ -516,6 +516,7 @@ function ChatRoomScreen({
   const [isPortfolioSheetOpen, setIsPortfolioSheetOpen] = useState(false)
   const [isRankingSheetOpen, setIsRankingSheetOpen] = useState(false)
   const [isTradeSheetDragging, setIsTradeSheetDragging] = useState(false)
+  const [isTradeSheetDismissing, setIsTradeSheetDismissing] = useState(false)
   const [tradeSheetDragY, setTradeSheetDragY] = useState(0)
   const messageInputRef = useRef<HTMLTextAreaElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -577,10 +578,12 @@ function ChatRoomScreen({
       const dismissThreshold = Math.min(96, sheetHeight * 0.18)
 
       if (tradeSheetDragYRef.current >= dismissThreshold) {
+        setIsTradeSheetDismissing(true)
         setTradeSheetDragY(sheetHeight)
         tradeSheetDragYRef.current = sheetHeight
         tradeSheetDismissTimerRef.current = window.setTimeout(() => {
           setIsTradeSheetOpen(false)
+          setIsTradeSheetDismissing(false)
           setTradeSheetDragY(0)
           tradeSheetDragYRef.current = 0
           tradeSheetDismissTimerRef.current = null
@@ -621,16 +624,39 @@ function ChatRoomScreen({
 
   const openTradeSheet = () => {
     setIsTradeSheetDragging(false)
+    setIsTradeSheetDismissing(false)
     setTradeSheetDragY(0)
     tradeSheetDragYRef.current = 0
     setIsTradeSheetOpen(true)
   }
 
   const closeTradeSheet = () => {
+    if (tradeSheetDismissTimerRef.current !== null) {
+      window.clearTimeout(tradeSheetDismissTimerRef.current)
+      tradeSheetDismissTimerRef.current = null
+    }
     setIsTradeSheetOpen(false)
     setIsTradeSheetDragging(false)
+    setIsTradeSheetDismissing(false)
     setTradeSheetDragY(0)
     tradeSheetDragYRef.current = 0
+  }
+
+  const dismissTradeSheet = () => {
+    if (tradeSheetDismissTimerRef.current !== null) return
+
+    const sheetHeight = tradeSheetRef.current?.getBoundingClientRect().height ?? 600
+    setIsTradeSheetDragging(false)
+    setIsTradeSheetDismissing(true)
+    setTradeSheetDragY(sheetHeight)
+    tradeSheetDragYRef.current = sheetHeight
+    tradeSheetDismissTimerRef.current = window.setTimeout(() => {
+      tradeSheetDismissTimerRef.current = null
+      setIsTradeSheetOpen(false)
+      setIsTradeSheetDismissing(false)
+      setTradeSheetDragY(0)
+      tradeSheetDragYRef.current = 0
+    }, 200)
   }
 
   const openPortfolioSheet = () => {
@@ -830,12 +856,12 @@ function ChatRoomScreen({
         <HomeIndicator />
       </div>
       {isTradeSheetOpen && (
-        <div className="trade-sheet-layer">
+        <div className={`trade-sheet-layer ${isTradeSheetDismissing ? 'is-dismissing' : ''}`}>
           <button
             type="button"
             className="trade-sheet-backdrop"
             aria-label="매매 화면 닫기"
-            onClick={closeTradeSheet}
+            onClick={dismissTradeSheet}
           />
           <section ref={tradeSheetRef} className="trade-sheet" role="dialog" aria-modal="true" aria-label="매매 화면" tabIndex={-1}>
             <div
@@ -851,7 +877,7 @@ function ChatRoomScreen({
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ' || event.key === 'ArrowDown') {
                     event.preventDefault()
-                    closeTradeSheet()
+                    dismissTradeSheet()
                   }
                 }}
               >

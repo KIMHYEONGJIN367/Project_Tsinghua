@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useRef,
   useState,
@@ -36,15 +37,32 @@ function SwipeSheet({
 }) {
   const [dragOffset, setDragOffset] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
+  const [isDismissing, setIsDismissing] = useState(false)
   const sheetRef = useRef<HTMLElement>(null)
   const dragStartYRef = useRef<number | null>(null)
   const dragOffsetRef = useRef(0)
   const dismissTimerRef = useRef<number | null>(null)
 
+  const dismissSheet = useCallback(() => {
+    if (dismissTimerRef.current !== null) return
+
+    const sheetHeight = sheetRef.current?.getBoundingClientRect().height ?? 600
+    const dismissOffset = edge === 'bottom' ? sheetHeight : -sheetHeight
+    dragStartYRef.current = null
+    dragOffsetRef.current = dismissOffset
+    setIsDragging(false)
+    setIsDismissing(true)
+    setDragOffset(dismissOffset)
+    dismissTimerRef.current = window.setTimeout(() => {
+      dismissTimerRef.current = null
+      onClose()
+    }, 200)
+  }, [edge, onClose])
+
   useEffect(() => {
     const focusFrame = window.requestAnimationFrame(() => sheetRef.current?.focus())
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') dismissSheet()
     }
 
     window.addEventListener('keydown', closeOnEscape)
@@ -52,7 +70,7 @@ function SwipeSheet({
       window.cancelAnimationFrame(focusFrame)
       window.removeEventListener('keydown', closeOnEscape)
     }
-  }, [onClose])
+  }, [dismissSheet])
 
   useEffect(() => {
     const moveSheet = (event: PointerEvent) => {
@@ -69,11 +87,7 @@ function SwipeSheet({
       setIsDragging(false)
 
       if (Math.abs(dragOffsetRef.current) >= 82) {
-        const sheetHeight = sheetRef.current?.getBoundingClientRect().height ?? 600
-        const dismissOffset = edge === 'bottom' ? sheetHeight : -sheetHeight
-        dragOffsetRef.current = dismissOffset
-        setDragOffset(dismissOffset)
-        dismissTimerRef.current = window.setTimeout(onClose, 200)
+        dismissSheet()
         return
       }
 
@@ -98,7 +112,7 @@ function SwipeSheet({
       window.removeEventListener('pointercancel', cancelSheetDrag)
       if (dismissTimerRef.current !== null) window.clearTimeout(dismissTimerRef.current)
     }
-  }, [edge, onClose])
+  }, [dismissSheet, edge])
 
   const startDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
     event.preventDefault()
@@ -116,7 +130,7 @@ function SwipeSheet({
         const dismissKey = edge === 'bottom' ? 'ArrowDown' : 'ArrowUp'
         if (event.key === 'Enter' || event.key === ' ' || event.key === dismissKey) {
           event.preventDefault()
-          onClose()
+          dismissSheet()
         }
       }}
     >
@@ -125,8 +139,8 @@ function SwipeSheet({
   )
 
   return (
-    <div className={`social-sheet-layer is-${edge}`}>
-      <button type="button" className="social-sheet-backdrop" aria-label={`${label} 닫기`} onClick={onClose} />
+    <div className={`social-sheet-layer is-${edge} ${isDismissing ? 'is-dismissing' : ''}`}>
+      <button type="button" className="social-sheet-backdrop" aria-label={`${label} 닫기`} onClick={dismissSheet} />
       <section
         ref={sheetRef}
         className={`social-sheet social-sheet-${edge} ${sheetClassName} ${isDragging ? 'is-dragging' : ''}`}

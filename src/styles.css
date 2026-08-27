@@ -1861,7 +1861,13 @@ body:has(.splash-shell) {
   border: 0;
   background: rgba(18, 16, 16, 0.42);
   cursor: pointer;
-  animation: trade-backdrop-in 220ms ease-out both;
+  transition: opacity 200ms ease;
+  animation: trade-backdrop-in 220ms ease-out;
+}
+
+.trade-sheet-layer.is-dismissing .trade-sheet-backdrop {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .trade-sheet {
@@ -4125,7 +4131,13 @@ body:has(.splash-shell) {
   padding: 0;
   border: 0;
   background: rgba(18, 16, 16, 0.42);
-  animation: trade-backdrop-in 220ms ease-out both;
+  transition: opacity 200ms ease;
+  animation: trade-backdrop-in 220ms ease-out;
+}
+
+.social-sheet-layer.is-dismissing .social-sheet-backdrop {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .social-sheet {
