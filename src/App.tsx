@@ -51,7 +51,6 @@ type RoomTimelineItem =
 type SocialViewTracker = { count: number; lastCountedAt: number; dateKey: string }
 
 const SOCIAL_VIEW_COOLDOWN_MS = 30_000
-const NEXT_RANK_RETURN = 28.4
 
 function isSocialViewMilestone(count: number) {
   return count === 3 || (count >= 5 && count % 5 === 0)
@@ -670,7 +669,7 @@ function ChatRoomScreen({
               쌍디 투자대회방
               <span className="chat-header-participants">4명</span>
             </strong>
-            <span>현재 2명 활동 중 · 종료 D-5</span>
+            <span>현재 2명 활동 중</span>
           </div>
           <div className="chat-room-actions">
             <button type="button" aria-label="통화">◡</button>
@@ -690,7 +689,7 @@ function ChatRoomScreen({
               <small>4명 중</small>
             </div>
             <div className="chat-account-hud-footer">
-              <span className="chat-account-rank-gap"><b aria-hidden="true">↑</b><span>2위까지 <strong>{(NEXT_RANK_RETURN - TOTAL_RETURN).toFixed(1)}%p</strong></span></span>
+              <span className="chat-account-deadline"><b>D-5</b><span>8월 31일 종료</span></span>
               <div>
                 <button type="button" onClick={openRankingSheet}>순위</button>
                 <button type="button" onClick={openPortfolioSheet}>잔고</button>
