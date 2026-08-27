@@ -3034,7 +3034,8 @@ body:has(.splash-shell) {
 
 .ticket-market-note strong {
   color: #302b2c;
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 750;
   text-align: right;
 }
 
@@ -3315,6 +3316,7 @@ body:has(.splash-shell) {
 .ticket-footer-estimate {
   display: flex;
   min-width: 0;
+  min-height: 18px;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -3322,14 +3324,15 @@ body:has(.splash-shell) {
 
 .ticket-sticky-footer small {
   color: #8d8384;
-  font-size: 7px;
+  font-size: 8px;
 }
 
 .ticket-sticky-footer strong {
   overflow: hidden;
   color: #272324;
   font-family: var(--app-font);
-  font-size: 10px;
+  font-size: 13px;
+  font-weight: 780;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
