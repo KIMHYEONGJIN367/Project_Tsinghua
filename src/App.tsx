@@ -41,6 +41,9 @@ type FeedMode = 'invest' | 'friends'
 type InvestCardVariant = 'default' | 'compact' | 'scoreboard'
 type ScreenKey = 'home' | 'chat-list' | 'chat-room' | 'splash'
 type NavKey = 'home' | 'chat' | 'invest' | 'portfolio' | 'my'
+type ChatFilter = 'all' | 'group' | 'personal'
+type ChatRoomKind = 'group' | 'personal'
+type ChatSwipeSide = 'leading' | 'trailing'
 
 type SocialViewKind = 'balance' | 'ranking'
 
@@ -164,11 +167,24 @@ const friends = [
   { name: '조진만', grade: '등급 기관', returnValue: '—' },
 ]
 
-const chatRooms = [
-  { title: '쌍띠 투자대회', detail: '진짜 오늘 단타 매수 타이밍이죠?', meta: '오후 9:41', count: '4', unread: 3, muted: false, image: investRoom },
-  { title: '카카오 투자대회', detail: '진짜 발표 전까지 떡상하려나요?', meta: '오후 8:12', count: '15', unread: 15, muted: true, image: friendsRoom },
-  { title: '장우진', detail: '모의투자도 끝까지 잘 챙겼네요 공유좀', meta: '오후 5:30', count: '1', unread: 1, muted: false, image: investProfile },
-  { title: '김영규', detail: '삼성전자 오늘 매수 타이밍 맞나요?', meta: '어제', count: '', unread: 0, muted: true, image: friendsProfile },
+type ChatRoom = {
+  id: string
+  title: string
+  detail: string
+  meta: string
+  count: string
+  unread: number
+  muted: boolean
+  pinned: boolean
+  kind: ChatRoomKind
+  image: string
+}
+
+const chatRooms: ChatRoom[] = [
+  { id: 'ssangddi', title: '쌍띠 투자대회', detail: '진짜 오늘 단타 매수 타이밍이죠?', meta: '오후 9:41', count: '4', unread: 3, muted: false, pinned: false, kind: 'group', image: investRoom },
+  { id: 'kakao', title: '카카오 투자대회', detail: '진짜 발표 전까지 떡상하려나요?', meta: '오후 8:12', count: '15', unread: 15, muted: true, pinned: false, kind: 'group', image: friendsRoom },
+  { id: 'jang-woo-jin', title: '장우진', detail: '모의투자도 끝까지 잘 챙겼네요 공유좀', meta: '오후 5:30', count: '1', unread: 1, muted: false, pinned: false, kind: 'personal', image: investProfile },
+  { id: 'kim-young-gyu', title: '김영규', detail: '삼성전자 오늘 매수 타이밍 맞나요?', meta: '어제', count: '', unread: 0, muted: true, pinned: false, kind: 'personal', image: friendsProfile },
 ]
 
 function getLeaderboardRows(room: (typeof investRooms)[number]) {
@@ -219,9 +235,6 @@ function FeedHeader({ icons, nodePrefix }: { icons: FeedIcons; nodePrefix: '2' |
     <header className="feed-header" data-node-id={`${nodePrefix}:42`} data-name="feed-header">
       <h1>천투</h1>
       <div className="header-actions">
-        <button type="button" aria-label="검색">
-          <Icon src={icons.search} nodeId={`${nodePrefix}:718`} />
-        </button>
         <button type="button" aria-label="새 콘텐츠 추가">
           <Icon src={icons.plus} nodeId={`${nodePrefix}:721`} />
         </button>
@@ -267,25 +280,54 @@ function HeroBanner({ profile, nodePrefix }: { profile: string; nodePrefix: '2' 
   )
 }
 
-function FeedTabs({ mode, onChange }: { mode: FeedMode; onChange: (mode: FeedMode) => void }) {
+function InlineSearch({ icon, value, placeholder, ariaLabel, onChange }: { icon: string; value: string; placeholder: string; ariaLabel: string; onChange: (value: string) => void }) {
+  return (
+    <div className={`inline-search ${value ? 'has-value' : ''}`}>
+      <Icon src={icon} size={16} />
+      <input
+        type="search"
+        value={value}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        onChange={(event) => onChange(event.target.value)}
+      />
+      {value && (
+        <button type="button" className="inline-search-clear" aria-label={`${ariaLabel} 초기화`} onClick={() => onChange('')}>
+          ×
+        </button>
+      )}
+    </div>
+  )
+}
+
+function FeedTabs({ mode, onChange, searchValue, onSearchChange, searchIcon }: { mode: FeedMode; onChange: (mode: FeedMode) => void; searchValue: string; onSearchChange: (value: string) => void; searchIcon: string }) {
   return (
     <div className="feed-tabs" data-name="tab-switcher">
-      <button
-        type="button"
-        className={`feed-tab ${mode === 'invest' ? 'is-active' : ''}`}
-        aria-pressed={mode === 'invest'}
-        onClick={() => onChange('invest')}
-      >
-        투자 대회
-      </button>
-      <button
-        type="button"
-        className={`feed-tab ${mode === 'friends' ? 'is-active' : ''}`}
-        aria-pressed={mode === 'friends'}
-        onClick={() => onChange('friends')}
-      >
-        친구
-      </button>
+      <div className="feed-tab-options">
+        <button
+          type="button"
+          className={`feed-tab ${mode === 'invest' ? 'is-active' : ''}`}
+          aria-pressed={mode === 'invest'}
+          onClick={() => onChange('invest')}
+        >
+          투자 대회
+        </button>
+        <button
+          type="button"
+          className={`feed-tab ${mode === 'friends' ? 'is-active' : ''}`}
+          aria-pressed={mode === 'friends'}
+          onClick={() => onChange('friends')}
+        >
+          친구
+        </button>
+      </div>
+      <InlineSearch
+        icon={searchIcon}
+        value={searchValue}
+        placeholder="검색"
+        ariaLabel={mode === 'invest' ? '투자 대회 검색' : '친구 검색'}
+        onChange={onSearchChange}
+      />
     </div>
   )
 }
@@ -441,7 +483,198 @@ function BottomNav({ icons, activeMode, activeKey = 'home', onNavigate }: { icon
   )
 }
 
+const CHAT_ACTION_WIDTH = 126
+
+function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigate, onTogglePinned, onToggleMuted, onRequestLeave }: {
+  room: ChatRoom
+  openSwipe: ChatSwipeSide | null
+  onOpenActions: (side: ChatSwipeSide) => void
+  onCloseActions: () => void
+  onNavigate: () => void
+  onTogglePinned: () => void
+  onToggleMuted: () => void
+  onRequestLeave: () => void
+}) {
+  const [dragOffsetX, setDragOffsetX] = useState(openSwipe === 'leading' ? CHAT_ACTION_WIDTH : openSwipe === 'trailing' ? -CHAT_ACTION_WIDTH : 0)
+  const pointerStartRef = useRef<{ x: number; y: number; startOffset: number } | null>(null)
+  const didSwipeRef = useRef(false)
+
+  useEffect(() => {
+    setDragOffsetX(openSwipe === 'leading' ? CHAT_ACTION_WIDTH : openSwipe === 'trailing' ? -CHAT_ACTION_WIDTH : 0)
+  }, [openSwipe])
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    pointerStartRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      startOffset: openSwipe === 'leading' ? CHAT_ACTION_WIDTH : openSwipe === 'trailing' ? -CHAT_ACTION_WIDTH : 0,
+    }
+    didSwipeRef.current = false
+  }
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    const pointerStart = pointerStartRef.current
+    if (!pointerStart) return
+
+    const deltaX = event.clientX - pointerStart.x
+    const deltaY = event.clientY - pointerStart.y
+    if (Math.abs(deltaX) < 6 && Math.abs(deltaY) < 6) return
+
+    if (Math.abs(deltaY) > Math.abs(deltaX)) {
+      pointerStartRef.current = null
+      return
+    }
+
+    event.preventDefault()
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      // Synthetic pointer events used by previews do not have an active pointer to capture.
+    }
+    didSwipeRef.current = true
+    setDragOffsetX(Math.max(-CHAT_ACTION_WIDTH, Math.min(CHAT_ACTION_WIDTH, pointerStart.startOffset + deltaX)))
+  }
+
+  const finishPointer = () => {
+    const pointerStart = pointerStartRef.current
+    if (!pointerStart) return
+
+    pointerStartRef.current = null
+    if (!didSwipeRef.current) return
+
+    const threshold = CHAT_ACTION_WIDTH * 0.45
+    const nextSide = dragOffsetX >= threshold ? 'leading' : dragOffsetX <= -threshold ? 'trailing' : null
+    setDragOffsetX(nextSide === 'leading' ? CHAT_ACTION_WIDTH : nextSide === 'trailing' ? -CHAT_ACTION_WIDTH : 0)
+    if (nextSide) onOpenActions(nextSide)
+    else onCloseActions()
+  }
+
+  const cancelPointer = () => {
+    pointerStartRef.current = null
+    didSwipeRef.current = false
+    setDragOffsetX(openSwipe === 'leading' ? CHAT_ACTION_WIDTH : openSwipe === 'trailing' ? -CHAT_ACTION_WIDTH : 0)
+  }
+
+  return (
+    <div className="chat-room-swipe-item">
+      <div className="chat-room-swipe-actions chat-room-swipe-actions-leading" aria-hidden={openSwipe !== 'leading'}>
+        <button
+          type="button"
+          className="chat-room-swipe-action chat-room-swipe-action-pin"
+          tabIndex={openSwipe === 'leading' ? 0 : -1}
+          aria-label={room.pinned ? `${room.title} 고정 해제` : `${room.title} 고정`}
+          onClick={() => {
+            onTogglePinned()
+            onCloseActions()
+          }}
+        >
+          <span aria-hidden="true">📌</span>
+          <small>{room.pinned ? '해제' : '고정'}</small>
+        </button>
+        <button
+          type="button"
+          className="chat-room-swipe-action chat-room-swipe-action-alert"
+          tabIndex={openSwipe === 'leading' ? 0 : -1}
+          aria-label={room.muted ? `${room.title} 알람 설정` : `${room.title} 알람 해제`}
+          onClick={() => {
+            onToggleMuted()
+            onCloseActions()
+          }}
+        >
+          <span aria-hidden="true">◔</span>
+          <small>{room.muted ? '알람 켜기' : '알람 끄기'}</small>
+        </button>
+      </div>
+      <div className="chat-room-swipe-actions chat-room-swipe-actions-trailing" aria-hidden={openSwipe !== 'trailing'}>
+        <button
+          type="button"
+          className="chat-room-swipe-action chat-room-swipe-action-leave"
+          tabIndex={openSwipe === 'trailing' ? 0 : -1}
+          aria-label={`${room.title} ${room.kind === 'group' ? '포기하기' : '나가기'}`}
+          onClick={() => {
+            onRequestLeave()
+            onCloseActions()
+          }}
+        >
+          <span aria-hidden="true">↗</span>
+          <small>{room.kind === 'group' ? '포기하기' : '나가기'}</small>
+        </button>
+      </div>
+      <button
+        className={`chat-room-row ${room.pinned ? 'is-pinned' : ''}`}
+        type="button"
+        aria-expanded={openSwipe !== null}
+        style={{ transform: `translateX(${dragOffsetX}px)` }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={finishPointer}
+        onPointerCancel={cancelPointer}
+        onClick={() => {
+          if (didSwipeRef.current) {
+            didSwipeRef.current = false
+            return
+          }
+          if (openSwipe !== null) {
+            onCloseActions()
+            return
+          }
+          onNavigate()
+        }}
+      >
+        <img src={room.image} alt="" width="48" height="48" />
+        <span className="chat-room-copy">
+          <span className="chat-room-title-line">
+            <strong>{room.title}</strong>
+            {room.pinned && <span className="chat-pinned-indicator" aria-label="고정됨">📌</span>}
+            {room.muted && <span className="chat-muted-icon" aria-label="알람 해제됨" />}
+            {room.count && (
+              <span className="chat-participant-count">
+                <Icon src={friendsUser} size={10} />
+                {room.count}
+              </span>
+            )}
+          </span>
+          <span>{room.detail}</span>
+        </span>
+        <span className="chat-row-side-meta">
+          <span className="chat-room-time">{room.meta}</span>
+          {room.unread > 0 && <span className="chat-unread-badge">{room.unread > 99 ? '99+' : room.unread}</span>}
+        </span>
+      </button>
+    </div>
+  )
+}
+
 function ChatListScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
+  const [chatFilter, setChatFilter] = useState<ChatFilter>('all')
+  const [chatQuery, setChatQuery] = useState('')
+  const [chatRoomsState, setChatRoomsState] = useState(chatRooms)
+  const [swipedRoom, setSwipedRoom] = useState<{ id: string; side: ChatSwipeSide } | null>(null)
+  const [pendingLeaveRoom, setPendingLeaveRoom] = useState<ChatRoom | null>(null)
+  const normalizedChatQuery = chatQuery.trim().toLocaleLowerCase()
+
+  useEffect(() => {
+    setSwipedRoom(null)
+  }, [chatFilter, chatQuery])
+
+  const visibleChatRooms = chatRoomsState
+    .filter((room) => chatFilter === 'all' || room.kind === chatFilter)
+    .filter((room) => !normalizedChatQuery || `${room.title} ${room.detail}`.toLocaleLowerCase().includes(normalizedChatQuery))
+    .sort((firstRoom, secondRoom) => Number(secondRoom.pinned) - Number(firstRoom.pinned))
+
+  const updateChatRoom = (roomId: string, update: Partial<Pick<ChatRoom, 'pinned' | 'muted'>>) => {
+    setChatRoomsState((rooms) => rooms.map((room) => room.id === roomId ? { ...room, ...update } : room))
+  }
+
+  const confirmLeaveRoom = () => {
+    if (!pendingLeaveRoom) return
+    setChatRoomsState((rooms) => rooms.filter((room) => room.id !== pendingLeaveRoom.id))
+    setPendingLeaveRoom(null)
+    setSwipedRoom(null)
+  }
+
+  const pendingLeaveAction = pendingLeaveRoom?.kind === 'group' ? '포기하기' : '나가기'
+
   return (
     <main className="app-shell chat-shell chat-list-screen" data-name="chat-list" data-node-id="2:126">
       <div className="chat-top-container">
@@ -449,44 +682,65 @@ function ChatListScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => voi
         <header className="chat-header">
           <h1>대회</h1>
           <div className="chat-header-actions">
-            <button type="button" aria-label="검색"><Icon src={friendsSearch} size={22} /></button>
             <button type="button" aria-label="새 대화"><Icon src={friendsPlus} size={22} /></button>
           </div>
         </header>
         <div className="chat-filter-tabs" role="tablist" aria-label="대화 필터">
-          <button type="button" className="is-active">전체</button>
-          <button type="button">그룹별</button>
-          <button type="button">개인별</button>
+          <div className="chat-filter-options">
+            {([
+              ['all', '전체'],
+              ['group', '그룹별'],
+              ['personal', '개인별'],
+            ] as const).map(([filter, label]) => (
+              <button
+                type="button"
+                className={chatFilter === filter ? 'is-active' : ''}
+                role="tab"
+                aria-selected={chatFilter === filter}
+                key={filter}
+                onClick={() => setChatFilter(filter)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <InlineSearch icon={friendsSearch} value={chatQuery} placeholder="검색" ariaLabel="대회 검색" onChange={setChatQuery} />
         </div>
         <section className="chat-room-list" aria-label="대화 목록">
-          {chatRooms.map((room) => (
-            <button className="chat-room-row" type="button" key={room.title} onClick={() => onNavigate('chat-room')}>
-              <img src={room.image} alt="" width="48" height="48" />
-              <span className="chat-room-copy">
-                <span className="chat-room-title-line">
-                  <strong>{room.title}</strong>
-                  {room.muted && <span className="chat-muted-icon" aria-label="알림 끄기" />}
-                  {room.count && (
-                    <span className="chat-participant-count">
-                      <Icon src={friendsUser} size={10} />
-                      {room.count}
-                    </span>
-                  )}
-                </span>
-                <span>{room.detail}</span>
-              </span>
-              <span className="chat-row-side-meta">
-                <span className="chat-room-time">{room.meta}</span>
-                {room.unread > 0 && <span className="chat-unread-badge">{room.unread > 99 ? '99+' : room.unread}</span>}
-              </span>
-            </button>
+          {visibleChatRooms.map((room) => (
+            <ChatRoomRow
+              key={room.id}
+              room={room}
+              openSwipe={swipedRoom?.id === room.id ? swipedRoom.side : null}
+              onOpenActions={(side) => setSwipedRoom({ id: room.id, side })}
+              onCloseActions={() => setSwipedRoom(null)}
+              onNavigate={() => onNavigate('chat-room')}
+              onTogglePinned={() => updateChatRoom(room.id, { pinned: !room.pinned })}
+              onToggleMuted={() => updateChatRoom(room.id, { muted: !room.muted })}
+              onRequestLeave={() => setPendingLeaveRoom(room)}
+            />
           ))}
+          {visibleChatRooms.length === 0 && <p className="chat-empty-state">{chatRoomsState.length === 0 ? '참여 중인 채팅방이 없습니다.' : '검색 결과가 없습니다.'}</p>}
         </section>
       </div>
       <div className="feed-bottom">
         <BottomNav icons={friendsIcons} activeMode="friends" activeKey="chat" onNavigate={onNavigate} />
         <HomeIndicator />
       </div>
+      {pendingLeaveRoom && (
+        <div className="chat-confirm-layer">
+          <button type="button" className="chat-confirm-backdrop" aria-label="확인 창 닫기" onClick={() => setPendingLeaveRoom(null)} />
+          <section className="chat-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="chat-confirm-title" aria-describedby="chat-confirm-description">
+            <span className="chat-confirm-badge">{pendingLeaveRoom.kind === 'group' ? '대회' : '채팅'}</span>
+            <h2 id="chat-confirm-title">{pendingLeaveAction} 하시겠어요?</h2>
+            <p id="chat-confirm-description"><strong>{pendingLeaveRoom.title}</strong>{pendingLeaveRoom.kind === 'group' ? '에서 포기하면 대화 목록에서 사라집니다.' : '에서 나가면 대화 목록에서 사라집니다.'}</p>
+            <div className="chat-confirm-actions">
+              <button type="button" className="chat-confirm-cancel" onClick={() => setPendingLeaveRoom(null)}>취소</button>
+              <button type="button" className="chat-confirm-destructive" onClick={confirmLeaveRoom}>{pendingLeaveAction}</button>
+            </div>
+          </section>
+        </div>
+      )}
     </main>
   )
 }
@@ -936,6 +1190,17 @@ function HomeIndicator() {
 function HomeFeed({ mode, onModeChange, cardVariant, onNavigate }: { mode: FeedMode; onModeChange: (mode: FeedMode) => void; cardVariant: InvestCardVariant; onNavigate: (screen: ScreenKey) => void }) {
   const icons = mode === 'invest' ? investIcons : friendsIcons
   const isFriends = mode === 'friends'
+  const [searchQuery, setSearchQuery] = useState('')
+  const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase()
+  const visibleInvestRooms = investRooms.filter((room) => (
+    !normalizedSearchQuery
+    || `${room.title} ${room.scheduleLabel} ${room.leaderboard.join(' ')} ${room.holdings.map((holding) => holding.name).join(' ')}`.toLocaleLowerCase().includes(normalizedSearchQuery)
+  ))
+  const visibleFriends = friends.filter((friend) => (
+    !normalizedSearchQuery
+    || `${friend.name} ${friend.grade}`.toLocaleLowerCase().includes(normalizedSearchQuery)
+  ))
+  const visibleItemCount = isFriends ? visibleFriends.length : visibleInvestRooms.length
 
   return (
     <main className={`app-shell feed-shell ${isFriends ? 'friends-feed' : 'invest-feed'}`} data-name={isFriends ? 'home-feed-freinds' : 'home-feed-invest'}>
@@ -946,11 +1211,12 @@ function HomeFeed({ mode, onModeChange, cardVariant, onNavigate }: { mode: FeedM
         <HeroBanner profile={isFriends ? friendsProfile : investProfile} nodePrefix={isFriends ? '7' : '2'} />
 
         <section className={`feed-section ${isFriends ? 'friends-section' : 'invest-section'}`}>
-          <FeedTabs mode={mode} onChange={onModeChange} />
+          <FeedTabs mode={mode} onChange={onModeChange} searchValue={searchQuery} onSearchChange={setSearchQuery} searchIcon={icons.search} />
           <div className="rooms-list">
             {isFriends
-              ? friends.map((friend, index) => <FriendCard friend={friend} index={index} key={friend.name} />)
-              : investRooms.map((room, index) => <InvestRoomCard room={room} index={index} variant={cardVariant} key={`${room.title}-${index}`} />)}
+              ? visibleFriends.map((friend, index) => <FriendCard friend={friend} index={index} key={friend.name} />)
+              : visibleInvestRooms.map((room, index) => <InvestRoomCard room={room} index={index} variant={cardVariant} key={`${room.title}-${index}`} />)}
+            {visibleItemCount === 0 && <p className="feed-empty-state">검색 결과가 없습니다.</p>}
           </div>
         </section>
       </div>
