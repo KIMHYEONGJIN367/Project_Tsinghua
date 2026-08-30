@@ -39,12 +39,13 @@ import splashTrending from './assets/trending-up.svg'
 
 type FeedMode = 'invest' | 'friends'
 type InvestCardVariant = 'default' | 'compact' | 'scoreboard'
-type ScreenKey = 'home' | 'chat-list' | 'chat-room' | 'competition-join' | 'friend-add' | 'splash'
+type ScreenKey = 'home' | 'chat-list' | 'chat-room' | 'competition-join' | 'lounge-create' | 'friend-add' | 'my' | 'splash'
 type NavKey = 'home' | 'chat' | 'invest' | 'my'
 type ChatFilter = 'all' | 'group' | 'personal'
 type ChatRoomKind = 'group' | 'personal'
 type ChatSwipeSide = 'leading' | 'trailing'
 type ChatCompetitionState = 'active' | 'chat-only'
+type MyPanelKey = 'profile' | 'records' | 'notifications' | 'friends' | 'devices' | 'visibility' | 'support'
 
 type SocialViewKind = 'balance' | 'ranking'
 
@@ -62,6 +63,7 @@ type RoomTimelineItem =
   | { id: string; kind: 'view-event'; viewKind: SocialViewKind; count: number; sentAt: string }
   | { id: string; kind: 'portfolio-share'; sentAt: string }
   | { id: string; kind: 'join-event'; roomKind: '대회' | '라운지'; sentAt: string }
+  | { id: string; kind: 'lounge-create-event'; sentAt: string }
 
 type FriendProfile = {
   id: string
@@ -301,7 +303,7 @@ function StatusBar({ icons, nodePrefix }: { icons: FeedIcons; nodePrefix: '2' | 
   )
 }
 
-type HomeQuickActionIconKind = 'host' | 'join' | 'friend'
+type HomeQuickActionIconKind = 'host' | 'join' | 'friend' | 'lounge'
 
 function HomeQuickActionIcon({ kind }: { kind: HomeQuickActionIconKind }) {
   return (
@@ -323,6 +325,12 @@ function HomeQuickActionIcon({ kind }: { kind: HomeQuickActionIconKind }) {
         <>
           <circle cx="9" cy="8" r="3" />
           <path d="M3.5 19a5.5 5.5 0 0 1 11 0M18 8v6M15 11h6" />
+        </>
+      )}
+      {kind === 'lounge' && (
+        <>
+          <path d="M5 5.5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H10l-5 3v-3H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z" />
+          <path d="M12 8.5v6M9 11.5h6" />
         </>
       )}
     </svg>
@@ -400,6 +408,66 @@ function FeedHeader({ icons, nodePrefix, onQuickAction }: { icons: FeedIcons; no
         )}
       </div>
     </header>
+  )
+}
+
+function ChatListQuickMenu({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
+  const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false)
+  const quickMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isQuickMenuOpen) return
+
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!quickMenuRef.current?.contains(event.target as Node)) setIsQuickMenuOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsQuickMenuOpen(false)
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePress)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePress)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [isQuickMenuOpen])
+
+  const openScreen = (screen: ScreenKey) => {
+    setIsQuickMenuOpen(false)
+    onNavigate(screen)
+  }
+
+  return (
+    <div className="header-actions chat-header-actions" ref={quickMenuRef}>
+      <button
+        type="button"
+        className={`header-add-trigger ${isQuickMenuOpen ? 'is-open' : ''}`}
+        aria-label="대회 빠른 메뉴 열기"
+        aria-haspopup="menu"
+        aria-expanded={isQuickMenuOpen}
+        onClick={() => setIsQuickMenuOpen((isOpen) => !isOpen)}
+      >
+        <Icon src={friendsPlus} size={22} />
+      </button>
+      {isQuickMenuOpen && (
+        <div className="home-quick-menu chat-list-quick-menu" role="menu" aria-label="대회 빠른 메뉴">
+          <button type="button" className="home-quick-action is-planned" role="menuitem" disabled>
+            <span className="home-quick-action-icon"><HomeQuickActionIcon kind="host" /></span>
+            <span className="home-quick-action-copy"><strong>대회 주최하기</strong></span>
+            <small>준비 중</small>
+          </button>
+          <button type="button" className="home-quick-action" role="menuitem" onClick={() => openScreen('competition-join')}>
+            <span className="home-quick-action-icon"><HomeQuickActionIcon kind="join" /></span>
+            <span className="home-quick-action-copy"><strong>대회 참가하기</strong></span>
+          </button>
+          <button type="button" className="home-quick-action" role="menuitem" onClick={() => openScreen('lounge-create')}>
+            <span className="home-quick-action-icon"><HomeQuickActionIcon kind="lounge" /></span>
+            <span className="home-quick-action-copy"><strong>라운지 만들기</strong></span>
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -492,11 +560,23 @@ function FeedTabs({ mode, onChange, searchValue, onSearchChange, searchIcon }: {
   )
 }
 
-function InvestRoomCardCompact({ room }: { room: (typeof investRooms)[number] }) {
+function InvestRoomCardCompact({ room, onOpen }: { room: (typeof investRooms)[number]; onOpen: () => void }) {
   const rows = getLeaderboardRows(room)
 
   return (
-    <article className="room-card invest-room-card invest-card-variant-a">
+    <article
+      className="room-card invest-room-card invest-card-variant-a"
+      role="button"
+      tabIndex={0}
+      aria-label={`${room.title} 대화방 열기`}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onOpen()
+        }
+      }}
+    >
       <img className="room-avatar" src={room.image} alt="투자 대회 프로필" width="48" height="48" />
       <div className="invest-card-body-a">
         <div className="invest-card-header-a">
@@ -521,11 +601,23 @@ function InvestRoomCardCompact({ room }: { room: (typeof investRooms)[number] })
   )
 }
 
-function InvestRoomCardScoreboard({ room }: { room: (typeof investRooms)[number] }) {
+function InvestRoomCardScoreboard({ room, onOpen }: { room: (typeof investRooms)[number]; onOpen: () => void }) {
   const rows = getLeaderboardRows(room)
 
   return (
-    <article className="room-card invest-room-card invest-card-variant-b">
+    <article
+      className="room-card invest-room-card invest-card-variant-b"
+      role="button"
+      tabIndex={0}
+      aria-label={`${room.title} 대화방 열기`}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onOpen()
+        }
+      }}
+    >
       <div className="invest-card-header-b">
         <img className="room-avatar" src={room.image} alt="투자 대회 프로필" width="48" height="48" />
         <div className="invest-card-heading-b">
@@ -570,12 +662,25 @@ function InvestRoomCardScoreboard({ room }: { room: (typeof investRooms)[number]
   )
 }
 
-function InvestRoomCard({ room, index, variant }: { room: (typeof investRooms)[number]; index: number; variant: InvestCardVariant }) {
-  if (variant === 'compact') return <InvestRoomCardCompact room={room} />
-  if (variant === 'scoreboard') return <InvestRoomCardScoreboard room={room} />
+function InvestRoomCard({ room, index, variant, onOpen }: { room: (typeof investRooms)[number]; index: number; variant: InvestCardVariant; onOpen: () => void }) {
+  if (variant === 'compact') return <InvestRoomCardCompact room={room} onOpen={onOpen} />
+  if (variant === 'scoreboard') return <InvestRoomCardScoreboard room={room} onOpen={onOpen} />
 
   return (
-    <article className="room-card invest-room-card" data-node-id={index === 0 ? '2:70' : undefined}>
+    <article
+      className="room-card invest-room-card"
+      data-node-id={index === 0 ? '2:70' : undefined}
+      role="button"
+      tabIndex={0}
+      aria-label={`${room.title} 대화방 열기`}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onOpen()
+        }
+      }}
+    >
       <img className="room-avatar" src={room.image} alt="투자 대회 프로필" width="48" height="48" />
       <div className="room-card-body">
         <div className="room-topline">
@@ -592,9 +697,22 @@ function InvestRoomCard({ room, index, variant }: { room: (typeof investRooms)[n
   )
 }
 
-function FriendCard({ friend, index }: { friend: (typeof friends)[number]; index: number }) {
+function FriendCard({ friend, index, onOpen }: { friend: (typeof friends)[number]; index: number; onOpen: () => void }) {
   return (
-    <article className="room-card friend-room-card" data-node-id={index === 0 ? '7:233' : undefined}>
+    <article
+      className="room-card friend-room-card"
+      data-node-id={index === 0 ? '7:233' : undefined}
+      role="button"
+      tabIndex={0}
+      aria-label={`${friend.name}님과 대화하기`}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          onOpen()
+        }
+      }}
+    >
       <img className="room-avatar" src={friendsRoom} alt={`${friend.name} 프로필`} width="48" height="48" />
       <div className="friend-card-body">
         <div className="friend-identity">
@@ -633,6 +751,7 @@ function BottomNav({ icons, activeMode, activeKey = 'home', onNavigate }: { icon
           onClick={() => {
             if (item.key === 'home') onNavigate?.('home')
             if (item.key === 'chat') onNavigate?.('chat-list')
+            if (item.key === 'my') onNavigate?.('my')
           }}
         >
           <Icon src={icons[item.icon]} size={22} />
@@ -893,9 +1012,7 @@ function ChatListScreen({ onNavigate, rooms, onRoomsChange, onOpenRoom }: {
         <StatusBar icons={friendsIcons} nodePrefix="2" />
         <header className="chat-header">
           <h1>대회</h1>
-          <div className="chat-header-actions">
-            <button type="button" aria-label="대회 참가하기" onClick={() => onNavigate('competition-join')}><Icon src={friendsPlus} size={22} /></button>
-          </div>
+          <ChatListQuickMenu onNavigate={onNavigate} />
         </header>
         <div className="chat-filter-tabs" role="tablist" aria-label="대화 필터">
           <div className="chat-filter-options">
@@ -1305,6 +1422,14 @@ function ChatRoomScreen({
               </article>
             )
 
+            if (item.kind === 'lounge-create-event') return (
+              <div className="chat-join-alert" role="status" key={item.id}>
+                <span className="chat-join-alert-badge">개설</span>
+                <span>김형진님이 라운지를 만들었어요</span>
+                <time>{item.sentAt}</time>
+              </div>
+            )
+
             return (
               <div className="chat-join-alert" role="status" key={item.id}>
                 <span className="chat-join-alert-badge">참가</span>
@@ -1455,6 +1580,81 @@ function UtilityScreenHeader({ title, onBack }: { title: string; onBack: () => v
       <strong>{title}</strong>
       <span aria-hidden="true" />
     </header>
+  )
+}
+
+function LoungeCreateScreen({ onBack, onCreate }: {
+  onBack: () => void
+  onCreate: (draft: { title: string; description: string }) => void
+}) {
+  const [loungeTitle, setLoungeTitle] = useState('')
+  const [loungeDescription, setLoungeDescription] = useState('')
+  const normalizedTitle = loungeTitle.trim()
+  const canCreate = normalizedTitle.length >= 2
+
+  const createLounge = () => {
+    if (!canCreate) return
+    onCreate({ title: normalizedTitle, description: loungeDescription.trim() })
+  }
+
+  return (
+    <main className="app-shell utility-shell lounge-create-screen">
+      <div className="utility-top-container">
+        <StatusBar icons={friendsIcons} nodePrefix="2" />
+        <UtilityScreenHeader title="라운지 만들기" onBack={onBack} />
+        <section className="utility-scroll-content">
+          <div className="join-intro lounge-create-intro">
+            <span className="utility-eyebrow">가벼운 투자 대화방</span>
+            <h1>바로 이야기할 라운지를 만들어요</h1>
+            <p>대회 기간, 거래 시장, 공매도 같은 설정 없이 채팅방만 즉시 개설됩니다.</p>
+          </div>
+
+          <form className="lounge-create-form" onSubmit={(event) => { event.preventDefault(); createLounge() }}>
+            <label className="lounge-create-field" htmlFor="lounge-title">
+              <span><strong>라운지 이름</strong><small>{loungeTitle.length}/24</small></span>
+              <input
+                id="lounge-title"
+                value={loungeTitle}
+                maxLength={24}
+                autoComplete="off"
+                placeholder="예: 퇴근 후 종목 토크"
+                onChange={(event) => setLoungeTitle(event.target.value)}
+              />
+              <small>두 글자 이상 입력해주세요.</small>
+            </label>
+
+            <label className="lounge-create-field" htmlFor="lounge-description">
+              <span><strong>라운지 소개</strong><small>{loungeDescription.length}/60</small></span>
+              <textarea
+                id="lounge-description"
+                value={loungeDescription}
+                rows={3}
+                maxLength={60}
+                placeholder="어떤 이야기를 나누는 곳인지 간단히 적어주세요. (선택)"
+                onChange={(event) => setLoungeDescription(event.target.value)}
+              />
+            </label>
+
+            <aside className="lounge-create-note">
+              <span className="home-quick-action-icon"><HomeQuickActionIcon kind="lounge" /></span>
+              <span><strong>생성 즉시 시작</strong><small>개설 후 바로 라운지 채팅방으로 이동하며 대회 목록에도 추가됩니다.</small></span>
+            </aside>
+
+            <section className="lounge-create-preview" aria-label="라운지 미리보기">
+              <span className="lounge-preview-avatar">라</span>
+              <span>
+                <small>투자 라운지 · 1명</small>
+                <strong>{normalizedTitle || '라운지 이름 미리보기'}</strong>
+                <p>{loungeDescription.trim() || '편하게 투자 이야기를 나눠보세요.'}</p>
+              </span>
+            </section>
+
+            <button type="submit" className="lounge-create-submit" disabled={!canCreate}>라운지 만들고 대화 시작</button>
+          </form>
+        </section>
+      </div>
+      <HomeIndicator />
+    </main>
   )
 }
 
@@ -1714,6 +1914,280 @@ function FriendAddScreen({ onBack, requestedFriendIds, onRequestFriend }: {
   )
 }
 
+type MyIconKind = 'edit' | 'trophy' | 'bell' | 'users' | 'devices' | 'eye' | 'help' | 'chevron' | 'close' | 'shield' | 'check'
+
+function MyIcon({ kind }: { kind: MyIconKind }) {
+  return (
+    <svg className="my-line-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      {kind === 'edit' && (
+        <>
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z" />
+        </>
+      )}
+      {kind === 'trophy' && (
+        <>
+          <path d="M8 21h8" />
+          <path d="M12 17v4" />
+          <path d="M7 4h10v4a5 5 0 0 1-10 0V4Z" />
+          <path d="M7 6H4v1a4 4 0 0 0 4 4" />
+          <path d="M17 6h3v1a4 4 0 0 1-4 4" />
+        </>
+      )}
+      {kind === 'bell' && (
+        <>
+          <path d="M18 9.75a6 6 0 0 0-12 0c0 6-2.5 6.5-2.5 6.5h17S18 15.75 18 9.75Z" />
+          <path d="M9.75 19a2.5 2.5 0 0 0 4.5 0" />
+        </>
+      )}
+      {kind === 'users' && (
+        <>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </>
+      )}
+      {kind === 'devices' && (
+        <>
+          <rect x="2.5" y="4" width="14" height="10" rx="2" />
+          <path d="M7 19h5" />
+          <path d="M9.5 14v5" />
+          <rect x="17.5" y="9" width="4" height="10" rx="1.25" />
+        </>
+      )}
+      {kind === 'eye' && (
+        <>
+          <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
+          <circle cx="12" cy="12" r="2.5" />
+        </>
+      )}
+      {kind === 'help' && (
+        <>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M9.8 9a2.4 2.4 0 1 1 3.35 2.2c-.8.38-1.15.85-1.15 1.8" />
+          <path d="M12 17h.01" />
+        </>
+      )}
+      {kind === 'chevron' && <path d="m9 18 6-6-6-6" />}
+      {kind === 'close' && <path d="m6 6 12 12M18 6 6 18" />}
+      {kind === 'shield' && (
+        <>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+          <path d="m9 12 2 2 4-4" />
+        </>
+      )}
+      {kind === 'check' && <path d="m5 12 4 4L19 6" />}
+    </svg>
+  )
+}
+
+function MySettingSwitch({ checked, label, onChange }: { checked: boolean; label: string; onChange: () => void }) {
+  return (
+    <button type="button" className={`my-setting-switch ${checked ? 'is-on' : ''}`} role="switch" aria-checked={checked} aria-label={label} onClick={onChange}>
+      <span />
+    </button>
+  )
+}
+
+function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: ScreenKey) => void; onOpenCompetition: (title: string) => void }) {
+  const [profileName, setProfileName] = useState('김형진')
+  const [profileIntro, setProfileIntro] = useState('확신보다 규칙으로 매매합니다.')
+  const [draftName, setDraftName] = useState(profileName)
+  const [draftIntro, setDraftIntro] = useState(profileIntro)
+  const [activePanel, setActivePanel] = useState<MyPanelKey | null>(null)
+  const [notifications, setNotifications] = useState({ all: true, chat: true, trade: true })
+  const [profileVisible, setProfileVisible] = useState(true)
+  const [friendRequests, setFriendRequests] = useState(true)
+
+  useEffect(() => {
+    if (!activePanel) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setActivePanel(null)
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [activePanel])
+
+  const openProfileEditor = () => {
+    setDraftName(profileName)
+    setDraftIntro(profileIntro)
+    setActivePanel('profile')
+  }
+
+  const panelTitle: Record<MyPanelKey, string> = {
+    profile: '프로필 편집',
+    records: '내 대회 기록',
+    notifications: '알림',
+    friends: '친구 및 차단',
+    devices: '계정과 기기',
+    visibility: '게임 공개 범위',
+    support: '고객센터 · 약관',
+  }
+
+  const competitions = [
+    { title: '쌍띠 투자대회', state: '진행 중', rank: '현재 2위', returnValue: '+28.4%', tone: 'is-gain', image: investRoom },
+    { title: '카카오 투자대회', state: '종료', rank: '최종 15위', returnValue: '-15.8%', tone: 'is-loss', image: friendsRoom },
+  ]
+
+  const renderPanelContent = () => {
+    if (activePanel === 'profile') {
+      return (
+        <form className="my-profile-form" onSubmit={(event) => {
+          event.preventDefault()
+          setProfileName(draftName.trim() || '김형진')
+          setProfileIntro(draftIntro.trim() || '한 줄 소개를 입력해보세요.')
+          setActivePanel(null)
+        }}>
+          <div className="my-profile-avatar-edit">
+            <img src={investProfile} alt="김형진 프로필" width="68" height="68" />
+            <button type="button" aria-label="프로필 사진 변경"><MyIcon kind="edit" /></button>
+          </div>
+          <label>닉네임<input value={draftName} maxLength={12} onChange={(event) => setDraftName(event.target.value)} /></label>
+          <label>한 줄 소개<textarea value={draftIntro} maxLength={36} rows={2} onChange={(event) => setDraftIntro(event.target.value)} /></label>
+          <button type="submit" className="my-primary-button">저장</button>
+        </form>
+      )
+    }
+
+    if (activePanel === 'records') {
+      return (
+        <div className="my-record-list">
+          {competitions.map((competition) => (
+            <button type="button" key={competition.title} onClick={() => { setActivePanel(null); onOpenCompetition(competition.title) }}>
+              <img src={competition.image} alt="" width="42" height="42" />
+              <span><strong>{competition.title}</strong><small>{competition.state} · {competition.rank}</small></span>
+              <b className={competition.tone}>{competition.returnValue}</b>
+            </button>
+          ))}
+          <div className="my-record-summary"><MyIcon kind="trophy" /><span><strong>완주율 67%</strong><small>참가 6회 중 4회 완주</small></span></div>
+        </div>
+      )
+    }
+
+    if (activePanel === 'notifications') {
+      return (
+        <div className="my-sheet-menu">
+          <div><span><strong>전체 알림</strong><small>천투의 모든 푸시 알림</small></span><MySettingSwitch checked={notifications.all} label="전체 알림" onChange={() => setNotifications((current) => ({ ...current, all: !current.all }))} /></div>
+          <div><span><strong>채팅 알림</strong><small>메시지와 멘션</small></span><MySettingSwitch checked={notifications.chat && notifications.all} label="채팅 알림" onChange={() => setNotifications((current) => ({ ...current, chat: !current.chat }))} /></div>
+          <div><span><strong>매매·대회 알림</strong><small>체결, 순위, 대회 일정</small></span><MySettingSwitch checked={notifications.trade && notifications.all} label="매매와 대회 알림" onChange={() => setNotifications((current) => ({ ...current, trade: !current.trade }))} /></div>
+          <p className="my-sheet-note">방별 채팅 알림은 채팅 목록에서 스와이프해 조절할 수 있어요.</p>
+        </div>
+      )
+    }
+
+    if (activePanel === 'friends') {
+      return (
+        <div className="my-sheet-menu">
+          <button type="button" onClick={() => { setActivePanel(null); onNavigate('friend-add') }}><span><strong>친구 목록</strong><small>12명 · 새로운 친구 찾기</small></span><MyIcon kind="chevron" /></button>
+          <button type="button"><span><strong>받은 친구 요청</strong><small>새 요청 없음</small></span><MyIcon kind="chevron" /></button>
+          <button type="button"><span><strong>차단한 사용자</strong><small>1명</small></span><MyIcon kind="chevron" /></button>
+        </div>
+      )
+    }
+
+    if (activePanel === 'devices') {
+      return (
+        <div className="my-device-panel">
+          <div className="my-account-id"><small>천투 ID</small><strong>@kimhj</strong><span>친구가 나를 찾을 때 사용하는 ID예요.</span></div>
+          <div className="my-current-device"><span className="my-menu-icon"><MyIcon kind="devices" /></span><span><strong>Windows · 이 기기</strong><small>서울 · 지금 사용 중</small></span><b>현재</b></div>
+          <p className="my-sheet-note">새 기기에서 로그인하면 여기에서 접속 상태를 확인하고 연결을 해제할 수 있어요.</p>
+        </div>
+      )
+    }
+
+    if (activePanel === 'visibility') {
+      return (
+        <div className="my-sheet-menu">
+          <div><span><strong>프로필 공개</strong><small>대회 참가자와 친구에게 표시</small></span><MySettingSwitch checked={profileVisible} label="프로필 공개" onChange={() => setProfileVisible((current) => !current)} /></div>
+          <div><span><strong>친구 요청 허용</strong><small>천투 ID를 통한 요청</small></span><MySettingSwitch checked={friendRequests} label="친구 요청 허용" onChange={() => setFriendRequests((current) => !current)} /></div>
+          <div className="my-rule-card"><MyIcon kind="shield" /><span><strong>대회 활동은 게임 규칙이에요</strong><small>매매, 잔고·순위 확인 마일스톤은 같은 대회 참가자에게 표시되며 끌 수 없어요.</small></span></div>
+        </div>
+      )
+    }
+
+    return (
+      <div className="my-sheet-menu">
+        <button type="button"><span><strong>도움말 · 문의</strong><small>자주 묻는 질문과 문의하기</small></span><MyIcon kind="chevron" /></button>
+        <button type="button"><span><strong>이용약관</strong><small>서비스 이용 정책</small></span><MyIcon kind="chevron" /></button>
+        <button type="button"><span><strong>개인정보처리방침</strong><small>개인정보 보호 및 처리 안내</small></span><MyIcon kind="chevron" /></button>
+        <p className="my-version">천투 MVP · 버전 0.1.0</p>
+      </div>
+    )
+  }
+
+  const menuItems: Array<{ key: MyPanelKey; icon: MyIconKind; label: string; detail: string }> = [
+    { key: 'notifications', icon: 'bell', label: '알림', detail: '채팅·매매·대회' },
+    { key: 'friends', icon: 'users', label: '친구 및 차단', detail: '친구 12명' },
+    { key: 'devices', icon: 'devices', label: '계정과 기기', detail: '이 기기에서 접속 중' },
+    { key: 'visibility', icon: 'eye', label: '게임 공개 범위', detail: '활동 공개 규칙' },
+    { key: 'support', icon: 'help', label: '고객센터 · 약관', detail: '버전 0.1.0' },
+  ]
+
+  return (
+    <main className="app-shell my-screen" data-name="my-screen">
+      <div className="my-top-container">
+        <StatusBar icons={friendsIcons} nodePrefix="2" />
+        <header className="my-header"><h1>마이</h1></header>
+
+        <section className="my-profile">
+          <img src={investProfile} alt="김형진 프로필" width="66" height="66" />
+          <span className="my-profile-copy"><strong>{profileName}</strong><small>개미 · 천투 ID @kimhj</small><p>{profileIntro}</p></span>
+          <button type="button" className="my-profile-edit" aria-label="프로필 편집" onClick={openProfileEditor}><MyIcon kind="edit" /></button>
+        </section>
+
+        <section className="my-stats" aria-label="나의 대회 기록 요약">
+          <div><strong>6</strong><span>참가</span></div>
+          <div><strong>4</strong><span>완주</span></div>
+          <div><strong>1</strong><span>우승</span></div>
+        </section>
+
+        <section className="my-section">
+          <header><h2>최근 대회</h2><button type="button" onClick={() => setActivePanel('records')}>전체 기록</button></header>
+          <div className="my-competition-list">
+            {competitions.map((competition) => (
+              <button type="button" key={competition.title} onClick={() => onOpenCompetition(competition.title)}>
+                <img src={competition.image} alt="" width="42" height="42" />
+                <span><strong>{competition.title}</strong><small>{competition.state} · {competition.rank}</small></span>
+                <b className={competition.tone}>{competition.returnValue}</b>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="my-section my-settings-section">
+          <header><h2>설정</h2></header>
+          <div className="my-settings-list">
+            {menuItems.map((item) => (
+              <button type="button" key={item.key} onClick={() => setActivePanel(item.key)}>
+                <span className="my-menu-icon"><MyIcon kind={item.icon} /></span>
+                <span><strong>{item.label}</strong><small>{item.detail}</small></span>
+                <MyIcon kind="chevron" />
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
+
+      <div className="feed-bottom">
+        <BottomNav icons={friendsIcons} activeMode="friends" activeKey="my" onNavigate={onNavigate} />
+        <HomeIndicator />
+      </div>
+
+      {activePanel && (
+        <div className="my-sheet-layer">
+          <button type="button" className="my-sheet-backdrop" aria-label={`${panelTitle[activePanel]} 닫기`} onClick={() => setActivePanel(null)} />
+          <section className="my-sheet" role="dialog" aria-modal="true" aria-label={panelTitle[activePanel]}>
+            <div className="my-sheet-grabber" aria-hidden="true" />
+            <header><h2>{panelTitle[activePanel]}</h2><button type="button" aria-label="닫기" onClick={() => setActivePanel(null)}><MyIcon kind="close" /></button></header>
+            <div className="my-sheet-content">{renderPanelContent()}</div>
+          </section>
+        </div>
+      )}
+    </main>
+  )
+}
+
 function SplashScreen() {
   return (
     <main className="app-shell splash-shell" data-name="splash-screen" data-node-id="2:12">
@@ -1735,11 +2209,13 @@ function HomeIndicator() {
   return <div className="home-indicator"><div /></div>
 }
 
-function HomeFeed({ mode, onModeChange, cardVariant, onNavigate, investRoomItems, friendItems }: {
+function HomeFeed({ mode, onModeChange, cardVariant, onNavigate, onOpenInvestRoom, onOpenFriend, investRoomItems, friendItems }: {
   mode: FeedMode
   onModeChange: (mode: FeedMode) => void
   cardVariant: InvestCardVariant
   onNavigate: (screen: ScreenKey) => void
+  onOpenInvestRoom: (room: (typeof investRooms)[number]) => void
+  onOpenFriend: (friend: FriendProfile) => void
   investRoomItems: typeof investRooms
   friendItems: FriendProfile[]
 }) {
@@ -1776,8 +2252,8 @@ function HomeFeed({ mode, onModeChange, cardVariant, onNavigate, investRoomItems
           <FeedTabs mode={mode} onChange={onModeChange} searchValue={searchQuery} onSearchChange={setSearchQuery} searchIcon={icons.search} />
           <div className="rooms-list">
             {isFriends
-              ? visibleFriends.map((friend, index) => <FriendCard friend={friend} index={index} key={friend.name} />)
-              : visibleInvestRooms.map((room, index) => <InvestRoomCard room={room} index={index} variant={cardVariant} key={`${room.title}-${index}`} />)}
+              ? visibleFriends.map((friend, index) => <FriendCard friend={friend} index={index} onOpen={() => onOpenFriend(friend)} key={friend.name} />)
+              : visibleInvestRooms.map((room, index) => <InvestRoomCard room={room} index={index} variant={cardVariant} onOpen={() => onOpenInvestRoom(room)} key={`${room.title}-${index}`} />)}
             {visibleItemCount === 0 && <p className="feed-empty-state">검색 결과가 없습니다.</p>}
           </div>
         </section>
@@ -1801,6 +2277,7 @@ export default function App() {
   const [roomTimelines, setRoomTimelines] = useState<Record<string, RoomTimelineItem[]>>({})
   const [openOrders, setOpenOrders] = useState<OpenOrder[]>(initialOpenOrders)
   const [viewCounts, setViewCounts] = useState<Record<SocialViewKind, number>>({ balance: 0, ranking: 0 })
+  const [utilityReturnScreen, setUtilityReturnScreen] = useState<ScreenKey>('home')
   const socialViewTrackerRef = useRef<Record<SocialViewKind, SocialViewTracker>>({
     balance: { count: 0, lastCountedAt: 0, dateKey: '' },
     ranking: { count: 0, lastCountedAt: 0, dateKey: '' },
@@ -1810,11 +2287,14 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     if (params.get('invite')) return 'competition-join'
     const requestedScreen = params.get('screen')
-    if (requestedScreen === 'chat-list' || requestedScreen === 'chat-room' || requestedScreen === 'competition-join' || requestedScreen === 'friend-add' || requestedScreen === 'splash') return requestedScreen
+    if (requestedScreen === 'chat-list' || requestedScreen === 'chat-room' || requestedScreen === 'competition-join' || requestedScreen === 'lounge-create' || requestedScreen === 'friend-add' || requestedScreen === 'my' || requestedScreen === 'splash') return requestedScreen
     return 'home'
   })
 
   const navigate = (nextScreen: ScreenKey) => {
+    if (nextScreen === 'competition-join' || nextScreen === 'lounge-create' || nextScreen === 'friend-add') {
+      setUtilityReturnScreen(screen === 'chat-list' ? 'chat-list' : 'home')
+    }
     setScreen(nextScreen)
     const params = new URLSearchParams(window.location.search)
     if (nextScreen === 'home') params.delete('screen')
@@ -1883,6 +2363,80 @@ export default function App() {
     navigate('chat-room')
   }
 
+  const openInvestFeedRoom = (feedRoom: (typeof investRooms)[number]) => {
+    const existingRoom = chatRoomItems.find((room) => room.kind === 'group' && room.title === feedRoom.title)
+    if (existingRoom) {
+      openChatRoom(existingRoom)
+      return
+    }
+
+    const createdRoom: ChatRoom = {
+      id: `home-competition-${feedRoom.title}`,
+      title: feedRoom.title,
+      detail: feedRoom.rankStatus === '종료' ? '종료된 대회의 대화를 확인해보세요.' : '대회 채팅방에 입장했어요.',
+      meta: '방금',
+      count: getParticipantCount(feedRoom),
+      unread: 0,
+      muted: false,
+      pinned: false,
+      kind: 'group',
+      competitionState: feedRoom.rankStatus === '종료' ? 'chat-only' : 'active',
+      image: feedRoom.image,
+    }
+
+    setChatRoomItems((currentRooms) => [createdRoom, ...currentRooms])
+    openChatRoom(createdRoom)
+  }
+
+  const openFriendFeedRoom = (friend: FriendProfile) => {
+    const existingRoom = chatRoomItems.find((room) => room.kind === 'personal' && (room.id === friend.id || room.title === friend.name))
+    if (existingRoom) {
+      openChatRoom(existingRoom)
+      return
+    }
+
+    const createdRoom: ChatRoom = {
+      id: friend.id,
+      title: friend.name,
+      detail: '새 대화를 시작해보세요.',
+      meta: '방금',
+      count: '',
+      unread: 0,
+      muted: false,
+      pinned: false,
+      kind: 'personal',
+      image: friendsRoom,
+    }
+
+    setChatRoomItems((currentRooms) => [createdRoom, ...currentRooms])
+    openChatRoom(createdRoom)
+  }
+
+  const createLounge = ({ title, description }: { title: string; description: string }) => {
+    const roomId = `lounge-${crypto.randomUUID()}`
+    const createdRoom: ChatRoom = {
+      id: roomId,
+      title,
+      detail: description || '김형진님이 라운지를 만들었어요',
+      meta: '방금',
+      count: '1',
+      unread: 0,
+      muted: false,
+      pinned: false,
+      kind: 'group',
+      competitionState: 'chat-only',
+      image: friendsRoom,
+    }
+
+    setChatRoomItems((currentRooms) => [createdRoom, ...currentRooms])
+    setRoomTimelines((currentTimelines) => ({
+      ...currentTimelines,
+      [roomId]: [{ id: crypto.randomUUID(), kind: 'lounge-create-event', sentAt: getCurrentChatTime() }],
+    }))
+    setActiveRoomId(roomId)
+    navigate('chat-room')
+  }
+
   const joinCompetition = (invite: CompetitionInvite) => {
     const roomId = `invite-${invite.code.toLocaleLowerCase()}`
     const existingRoom = chatRoomItems.find((room) => room.id === roomId)
@@ -1941,9 +2495,18 @@ export default function App() {
 
   const activeRoom = chatRoomItems.find((room) => room.id === activeRoomId) ?? chatRoomItems[0]
 
+  const openMyCompetition = (title: string) => {
+    const room = chatRoomItems.find((item) => item.kind === 'group' && item.title === title)
+    if (room) openChatRoom(room)
+    else navigate('chat-list')
+  }
+
   if (screen === 'competition-join') {
     const initialCode = typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('invite') ?? ''
-    return <CompetitionJoinScreen initialCode={initialCode} onBack={() => navigate('home')} onJoin={joinCompetition} />
+    return <CompetitionJoinScreen initialCode={initialCode} onBack={() => navigate(utilityReturnScreen)} onJoin={joinCompetition} />
+  }
+  if (screen === 'lounge-create') {
+    return <LoungeCreateScreen onBack={() => navigate(utilityReturnScreen)} onCreate={createLounge} />
   }
   if (screen === 'friend-add') {
     return (
@@ -1980,6 +2543,18 @@ export default function App() {
       />
     )
   }
+  if (screen === 'my') return <MyScreen onNavigate={navigate} onOpenCompetition={openMyCompetition} />
   if (screen === 'splash') return <SplashScreen />
-  return <HomeFeed mode={mode} onModeChange={setMode} cardVariant={getInvestCardVariant()} onNavigate={navigate} investRoomItems={investRoomItems} friendItems={friendItems} />
+  return (
+    <HomeFeed
+      mode={mode}
+      onModeChange={setMode}
+      cardVariant={getInvestCardVariant()}
+      onNavigate={navigate}
+      onOpenInvestRoom={openInvestFeedRoom}
+      onOpenFriend={openFriendFeedRoom}
+      investRoomItems={investRoomItems}
+      friendItems={friendItems}
+    />
+  )
 }
