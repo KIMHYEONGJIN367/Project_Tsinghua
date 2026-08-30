@@ -39,18 +39,50 @@ import splashTrending from './assets/trending-up.svg'
 
 type FeedMode = 'invest' | 'friends'
 type InvestCardVariant = 'default' | 'compact' | 'scoreboard'
-type ScreenKey = 'home' | 'chat-list' | 'chat-room' | 'splash'
-type NavKey = 'home' | 'chat' | 'invest' | 'portfolio' | 'my'
+type ScreenKey = 'home' | 'chat-list' | 'chat-room' | 'competition-join' | 'friend-add' | 'splash'
+type NavKey = 'home' | 'chat' | 'invest' | 'my'
 type ChatFilter = 'all' | 'group' | 'personal'
 type ChatRoomKind = 'group' | 'personal'
 type ChatSwipeSide = 'leading' | 'trailing'
+type ChatCompetitionState = 'active' | 'chat-only'
 
 type SocialViewKind = 'balance' | 'ranking'
+
+type ChatHistoryItem = {
+  id: string
+  sender: string
+  text: string
+  sentAt: string
+  sentOn: string
+  mine?: boolean
+}
 
 type RoomTimelineItem =
   | { id: string; kind: 'message'; text: string; sentAt: string }
   | { id: string; kind: 'view-event'; viewKind: SocialViewKind; count: number; sentAt: string }
   | { id: string; kind: 'portfolio-share'; sentAt: string }
+  | { id: string; kind: 'join-event'; roomKind: '대회' | '라운지'; sentAt: string }
+
+type FriendProfile = {
+  id: string
+  tiantouId: string
+  name: string
+  grade: string
+  returnValue: string
+}
+
+type CompetitionInvite = {
+  code: string
+  title: string
+  participantCount: number
+  competitionState: ChatCompetitionState
+  startDate?: string
+  endDate?: string
+  market: string
+  shortAllowed: boolean
+  image: string
+  recentHistory: ChatHistoryItem[]
+}
 
 type SocialViewTracker = { count: number; lastCountedAt: number; dateKey: string }
 
@@ -104,11 +136,10 @@ const friendsIcons: FeedIcons = {
   user: friendsUser,
 }
 
-const navItems: Array<{ key: NavKey; label: string; icon: keyof Pick<FeedIcons, 'home' | 'message' | 'trending' | 'pie' | 'user'> }> = [
+const navItems: Array<{ key: NavKey; label: string; icon: keyof Pick<FeedIcons, 'home' | 'message' | 'trending' | 'user'> }> = [
   { key: 'home', label: '홈', icon: 'home' },
   { key: 'chat', label: '대회', icon: 'message' },
   { key: 'invest', label: '투자', icon: 'trending' },
-  { key: 'portfolio', label: '포트폴리오', icon: 'pie' },
   { key: 'my', label: '마이', icon: 'user' },
 ]
 
@@ -160,11 +191,16 @@ const investRooms = [
   },
 ]
 
-const friends = [
-  { name: '김영규', grade: '등급 불개미', returnValue: '+314.2%' },
-  { name: '장우진', grade: '등급 애널리스트', returnValue: '+28.4%' },
-  { name: '김형진', grade: '등급 개미', returnValue: '—' },
-  { name: '조진만', grade: '등급 기관', returnValue: '—' },
+const friends: FriendProfile[] = [
+  { id: 'kim-young-gyu', tiantouId: '@younggyu', name: '김영규', grade: '등급 불개미', returnValue: '+314.2%' },
+  { id: 'jang-woo-jin', tiantouId: '@woojin', name: '장우진', grade: '등급 애널리스트', returnValue: '+28.4%' },
+  { id: 'kim-hyeong-jin', tiantouId: '@hyeongjin367', name: '김형진', grade: '등급 개미', returnValue: '—' },
+  { id: 'jo-jin-man', tiantouId: '@jinman', name: '조진만', grade: '등급 기관', returnValue: '—' },
+]
+
+const friendDirectory: FriendProfile[] = [
+  { id: 'lee-min-su', tiantouId: '@minsu77', name: '이민수', grade: '등급 가치투자자', returnValue: '+18.7%' },
+  { id: 'park-seo-jun', tiantouId: '@seojunpark', name: '박서준', grade: '등급 개미', returnValue: '+4.2%' },
 ]
 
 type ChatRoom = {
@@ -177,14 +213,49 @@ type ChatRoom = {
   muted: boolean
   pinned: boolean
   kind: ChatRoomKind
+  competitionState?: ChatCompetitionState
+  recentHistory?: ChatHistoryItem[]
   image: string
 }
 
 const chatRooms: ChatRoom[] = [
-  { id: 'ssangddi', title: '쌍띠 투자대회', detail: '진짜 오늘 단타 매수 타이밍이죠?', meta: '오후 9:41', count: '4', unread: 3, muted: false, pinned: false, kind: 'group', image: investRoom },
-  { id: 'kakao', title: '카카오 투자대회', detail: '진짜 발표 전까지 떡상하려나요?', meta: '오후 8:12', count: '15', unread: 15, muted: true, pinned: false, kind: 'group', image: friendsRoom },
+  { id: 'ssangddi', title: '쌍띠 투자대회', detail: '진짜 오늘 단타 매수 타이밍이죠?', meta: '오후 9:41', count: '4', unread: 3, muted: false, pinned: false, kind: 'group', competitionState: 'active', image: investRoom },
+  { id: 'kakao', title: '카카오 투자대회', detail: '진짜 발표 전까지 떡상하려나요?', meta: '오후 8:12', count: '15', unread: 15, muted: true, pinned: false, kind: 'group', competitionState: 'chat-only', image: friendsRoom },
   { id: 'jang-woo-jin', title: '장우진', detail: '모의투자도 끝까지 잘 챙겼네요 공유좀', meta: '오후 5:30', count: '1', unread: 1, muted: false, pinned: false, kind: 'personal', image: investProfile },
   { id: 'kim-young-gyu', title: '김영규', detail: '삼성전자 오늘 매수 타이밍 맞나요?', meta: '어제', count: '', unread: 0, muted: true, pinned: false, kind: 'personal', image: friendsProfile },
+]
+
+const competitionInvites: CompetitionInvite[] = [
+  {
+    code: 'T26START',
+    title: '여름 단타 챌린지',
+    participantCount: 11,
+    competitionState: 'active',
+    startDate: '2026.08.28',
+    endDate: '2026.09.06',
+    market: '국내 주식',
+    shortAllowed: true,
+    image: investRoom,
+    recentHistory: [
+      { id: 'summer-history-1', sender: '박민수', text: '오늘 장 시작부터 변동성 엄청 크네요.', sentOn: '8월 28일', sentAt: '오전 9:18' },
+      { id: 'summer-history-2', sender: '이서연', text: '반도체 비중 줄이고 현금 들고 있어요.', sentOn: '8월 29일', sentAt: '오후 3:42' },
+      { id: 'summer-history-3', sender: '장우진', text: '새로 오신 분들 반갑습니다!', sentOn: '오늘', sentAt: '오전 11:06' },
+    ],
+  },
+  {
+    code: 'LOUNGE88',
+    title: '퇴근 후 투자 라운지',
+    participantCount: 27,
+    competitionState: 'chat-only',
+    market: '국내 주식',
+    shortAllowed: false,
+    image: friendsRoom,
+    recentHistory: [
+      { id: 'lounge-history-1', sender: '김영규', text: '이번 주 관심 종목 하나씩 공유해볼까요?', sentOn: '8월 28일', sentAt: '오후 8:11' },
+      { id: 'lounge-history-2', sender: '조진만', text: '저는 자동차 부품주 보고 있습니다.', sentOn: '8월 29일', sentAt: '오후 7:34' },
+      { id: 'lounge-history-3', sender: '이민수', text: '오늘도 다들 고생 많으셨어요.', sentOn: '오늘', sentAt: '오후 6:02' },
+    ],
+  },
 ]
 
 function getLeaderboardRows(room: (typeof investRooms)[number]) {
@@ -230,14 +301,103 @@ function StatusBar({ icons, nodePrefix }: { icons: FeedIcons; nodePrefix: '2' | 
   )
 }
 
-function FeedHeader({ icons, nodePrefix }: { icons: FeedIcons; nodePrefix: '2' | '7' }) {
+type HomeQuickActionIconKind = 'host' | 'join' | 'friend'
+
+function HomeQuickActionIcon({ kind }: { kind: HomeQuickActionIconKind }) {
+  return (
+    <svg className="home-quick-action-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      {kind === 'host' && (
+        <>
+          <path d="M7 5h10v3.5a5 5 0 0 1-10 0V5Z" />
+          <path d="M9 15h6M12 13.5V19M8.5 19h7" />
+          <path d="M7 7H4.5v1A3.5 3.5 0 0 0 8 11.5M17 7h2.5v1a3.5 3.5 0 0 1-3.5 3.5" />
+        </>
+      )}
+      {kind === 'join' && (
+        <>
+          <path d="M13 5h5a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5" />
+          <path d="m10 8 4 4-4 4M14 12H4" />
+        </>
+      )}
+      {kind === 'friend' && (
+        <>
+          <circle cx="9" cy="8" r="3" />
+          <path d="M3.5 19a5.5 5.5 0 0 1 11 0M18 8v6M15 11h6" />
+        </>
+      )}
+    </svg>
+  )
+}
+
+function FeedHeader({ icons, nodePrefix, onQuickAction }: { icons: FeedIcons; nodePrefix: '2' | '7'; onQuickAction: (action: HomeQuickActionIconKind) => void }) {
+  const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false)
+  const quickMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!isQuickMenuOpen) return
+
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!quickMenuRef.current?.contains(event.target as Node)) setIsQuickMenuOpen(false)
+    }
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsQuickMenuOpen(false)
+    }
+
+    document.addEventListener('pointerdown', closeOnOutsidePress)
+    document.addEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsidePress)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [isQuickMenuOpen])
+
   return (
     <header className="feed-header" data-node-id={`${nodePrefix}:42`} data-name="feed-header">
       <h1>천투</h1>
-      <div className="header-actions">
-        <button type="button" aria-label="새 콘텐츠 추가">
+      <div className="header-actions" ref={quickMenuRef}>
+        <button
+          type="button"
+          className={`header-add-trigger ${isQuickMenuOpen ? 'is-open' : ''}`}
+          aria-label="빠른 메뉴 열기"
+          aria-haspopup="menu"
+          aria-expanded={isQuickMenuOpen}
+          onClick={() => setIsQuickMenuOpen((isOpen) => !isOpen)}
+        >
           <Icon src={icons.plus} nodeId={`${nodePrefix}:721`} />
         </button>
+        {isQuickMenuOpen && (
+          <div className="home-quick-menu" role="menu" aria-label="빠른 메뉴">
+            <button type="button" className="home-quick-action is-planned" role="menuitem" disabled>
+              <span className="home-quick-action-icon"><HomeQuickActionIcon kind="host" /></span>
+              <span className="home-quick-action-copy"><strong>대회 주최하기</strong></span>
+              <small>준비 중</small>
+            </button>
+            <button
+              type="button"
+              className="home-quick-action"
+              role="menuitem"
+              onClick={() => {
+                setIsQuickMenuOpen(false)
+                onQuickAction('join')
+              }}
+            >
+              <span className="home-quick-action-icon"><HomeQuickActionIcon kind="join" /></span>
+              <span className="home-quick-action-copy"><strong>대회 참가하기</strong></span>
+            </button>
+            <button
+              type="button"
+              className="home-quick-action"
+              role="menuitem"
+              onClick={() => {
+                setIsQuickMenuOpen(false)
+                onQuickAction('friend')
+              }}
+            >
+              <span className="home-quick-action-icon"><HomeQuickActionIcon kind="friend" /></span>
+              <span className="home-quick-action-copy"><strong>친구 추가</strong></span>
+            </button>
+          </div>
+        )}
       </div>
     </header>
   )
@@ -483,7 +643,47 @@ function BottomNav({ icons, activeMode, activeKey = 'home', onNavigate }: { icon
   )
 }
 
-const CHAT_ACTION_WIDTH = 126
+type ChatSwipeIconKind = 'bookmark' | 'bell' | 'bell-off' | 'flag' | 'log-out'
+
+function ChatSwipeIcon({ kind }: { kind: ChatSwipeIconKind }) {
+  return (
+    <svg className="chat-swipe-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      {kind === 'bookmark' && (
+        <path d="M6.5 4.75A1.75 1.75 0 0 1 8.25 3h7.5a1.75 1.75 0 0 1 1.75 1.75V21L12 17.65 6.5 21V4.75Z" />
+      )}
+      {kind === 'bell' && (
+        <>
+          <path d="M18 9.75a6 6 0 0 0-12 0c0 6-2.5 6.5-2.5 6.5h17S18 15.75 18 9.75Z" />
+          <path d="M9.75 19a2.5 2.5 0 0 0 4.5 0" />
+        </>
+      )}
+      {kind === 'bell-off' && (
+        <>
+          <path d="m4 4 16 16" />
+          <path d="M9.15 3.7A6 6 0 0 1 18 9.75c0 2.55.45 4.08 1 5" />
+          <path d="M6.3 6.3A6 6 0 0 0 6 9.75c0 6-2.5 6.5-2.5 6.5h12.25" />
+          <path d="M9.75 19a2.5 2.5 0 0 0 4.5 0" />
+        </>
+      )}
+      {kind === 'flag' && (
+        <>
+          <path d="M5 21V4" />
+          <path d="M5 5h11l-1.75 3L16 11H5" />
+        </>
+      )}
+      {kind === 'log-out' && (
+        <>
+          <path d="M10 17l5-5-5-5" />
+          <path d="M15 12H3" />
+          <path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4" />
+        </>
+      )}
+    </svg>
+  )
+}
+
+const CHAT_LEADING_ACTION_WIDTH = 126
+const CHAT_TRAILING_ACTION_WIDTH = 63
 
 function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigate, onTogglePinned, onToggleMuted, onRequestLeave }: {
   room: ChatRoom
@@ -495,19 +695,19 @@ function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigat
   onToggleMuted: () => void
   onRequestLeave: () => void
 }) {
-  const [dragOffsetX, setDragOffsetX] = useState(openSwipe === 'leading' ? CHAT_ACTION_WIDTH : openSwipe === 'trailing' ? -CHAT_ACTION_WIDTH : 0)
+  const [dragOffsetX, setDragOffsetX] = useState(openSwipe === 'leading' ? CHAT_LEADING_ACTION_WIDTH : openSwipe === 'trailing' ? -CHAT_TRAILING_ACTION_WIDTH : 0)
   const pointerStartRef = useRef<{ x: number; y: number; startOffset: number } | null>(null)
   const didSwipeRef = useRef(false)
 
   useEffect(() => {
-    setDragOffsetX(openSwipe === 'leading' ? CHAT_ACTION_WIDTH : openSwipe === 'trailing' ? -CHAT_ACTION_WIDTH : 0)
+    setDragOffsetX(openSwipe === 'leading' ? CHAT_LEADING_ACTION_WIDTH : openSwipe === 'trailing' ? -CHAT_TRAILING_ACTION_WIDTH : 0)
   }, [openSwipe])
 
   const handlePointerDown = (event: ReactPointerEvent<HTMLButtonElement>) => {
     pointerStartRef.current = {
       x: event.clientX,
       y: event.clientY,
-      startOffset: openSwipe === 'leading' ? CHAT_ACTION_WIDTH : openSwipe === 'trailing' ? -CHAT_ACTION_WIDTH : 0,
+      startOffset: openSwipe === 'leading' ? CHAT_LEADING_ACTION_WIDTH : openSwipe === 'trailing' ? -CHAT_TRAILING_ACTION_WIDTH : 0,
     }
     didSwipeRef.current = false
   }
@@ -532,7 +732,7 @@ function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigat
       // Synthetic pointer events used by previews do not have an active pointer to capture.
     }
     didSwipeRef.current = true
-    setDragOffsetX(Math.max(-CHAT_ACTION_WIDTH, Math.min(CHAT_ACTION_WIDTH, pointerStart.startOffset + deltaX)))
+    setDragOffsetX(Math.max(-CHAT_TRAILING_ACTION_WIDTH, Math.min(CHAT_LEADING_ACTION_WIDTH, pointerStart.startOffset + deltaX)))
   }
 
   const finishPointer = () => {
@@ -542,9 +742,12 @@ function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigat
     pointerStartRef.current = null
     if (!didSwipeRef.current) return
 
-    const threshold = CHAT_ACTION_WIDTH * 0.45
-    const nextSide = dragOffsetX >= threshold ? 'leading' : dragOffsetX <= -threshold ? 'trailing' : null
-    setDragOffsetX(nextSide === 'leading' ? CHAT_ACTION_WIDTH : nextSide === 'trailing' ? -CHAT_ACTION_WIDTH : 0)
+    const nextSide = dragOffsetX >= CHAT_LEADING_ACTION_WIDTH * 0.45
+      ? 'leading'
+      : dragOffsetX <= -CHAT_TRAILING_ACTION_WIDTH * 0.45
+        ? 'trailing'
+        : null
+    setDragOffsetX(nextSide === 'leading' ? CHAT_LEADING_ACTION_WIDTH : nextSide === 'trailing' ? -CHAT_TRAILING_ACTION_WIDTH : 0)
     if (nextSide) onOpenActions(nextSide)
     else onCloseActions()
   }
@@ -552,7 +755,7 @@ function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigat
   const cancelPointer = () => {
     pointerStartRef.current = null
     didSwipeRef.current = false
-    setDragOffsetX(openSwipe === 'leading' ? CHAT_ACTION_WIDTH : openSwipe === 'trailing' ? -CHAT_ACTION_WIDTH : 0)
+    setDragOffsetX(openSwipe === 'leading' ? CHAT_LEADING_ACTION_WIDTH : openSwipe === 'trailing' ? -CHAT_TRAILING_ACTION_WIDTH : 0)
   }
 
   return (
@@ -560,7 +763,7 @@ function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigat
       <div className="chat-room-swipe-actions chat-room-swipe-actions-leading" aria-hidden={openSwipe !== 'leading'}>
         <button
           type="button"
-          className="chat-room-swipe-action chat-room-swipe-action-pin"
+          className={`chat-room-swipe-action chat-room-swipe-action-pin ${room.pinned ? 'is-state-active' : ''}`}
           tabIndex={openSwipe === 'leading' ? 0 : -1}
           aria-label={room.pinned ? `${room.title} 고정 해제` : `${room.title} 고정`}
           onClick={() => {
@@ -568,12 +771,12 @@ function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigat
             onCloseActions()
           }}
         >
-          <span aria-hidden="true">📌</span>
+          <span className="chat-swipe-action-seal"><ChatSwipeIcon kind="bookmark" /></span>
           <small>{room.pinned ? '해제' : '고정'}</small>
         </button>
         <button
           type="button"
-          className="chat-room-swipe-action chat-room-swipe-action-alert"
+          className={`chat-room-swipe-action chat-room-swipe-action-alert ${room.muted ? 'is-state-active' : ''}`}
           tabIndex={openSwipe === 'leading' ? 0 : -1}
           aria-label={room.muted ? `${room.title} 알람 설정` : `${room.title} 알람 해제`}
           onClick={() => {
@@ -581,8 +784,8 @@ function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigat
             onCloseActions()
           }}
         >
-          <span aria-hidden="true">◔</span>
-          <small>{room.muted ? '알람 켜기' : '알람 끄기'}</small>
+          <span className="chat-swipe-action-seal"><ChatSwipeIcon kind={room.muted ? 'bell' : 'bell-off'} /></span>
+          <small>알람</small>
         </button>
       </div>
       <div className="chat-room-swipe-actions chat-room-swipe-actions-trailing" aria-hidden={openSwipe !== 'trailing'}>
@@ -596,7 +799,7 @@ function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigat
             onCloseActions()
           }}
         >
-          <span aria-hidden="true">↗</span>
+          <span className="chat-swipe-action-seal"><ChatSwipeIcon kind={room.kind === 'group' ? 'flag' : 'log-out'} /></span>
           <small>{room.kind === 'group' ? '포기하기' : '나가기'}</small>
         </button>
       </div>
@@ -625,7 +828,12 @@ function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigat
         <span className="chat-room-copy">
           <span className="chat-room-title-line">
             <strong>{room.title}</strong>
-            {room.pinned && <span className="chat-pinned-indicator" aria-label="고정됨">📌</span>}
+            {room.competitionState && (
+              <span className={`chat-room-status is-${room.competitionState}`}>
+                {room.competitionState === 'active' ? '대회 중' : '라운지'}
+              </span>
+            )}
+            {room.pinned && <span className="chat-pinned-indicator" aria-label="고정됨"><ChatSwipeIcon kind="bookmark" /></span>}
             {room.muted && <span className="chat-muted-icon" aria-label="알람 해제됨" />}
             {room.count && (
               <span className="chat-participant-count">
@@ -645,10 +853,14 @@ function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigat
   )
 }
 
-function ChatListScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
+function ChatListScreen({ onNavigate, rooms, onRoomsChange, onOpenRoom }: {
+  onNavigate: (screen: ScreenKey) => void
+  rooms: ChatRoom[]
+  onRoomsChange: (updater: (rooms: ChatRoom[]) => ChatRoom[]) => void
+  onOpenRoom: (room: ChatRoom) => void
+}) {
   const [chatFilter, setChatFilter] = useState<ChatFilter>('all')
   const [chatQuery, setChatQuery] = useState('')
-  const [chatRoomsState, setChatRoomsState] = useState(chatRooms)
   const [swipedRoom, setSwipedRoom] = useState<{ id: string; side: ChatSwipeSide } | null>(null)
   const [pendingLeaveRoom, setPendingLeaveRoom] = useState<ChatRoom | null>(null)
   const normalizedChatQuery = chatQuery.trim().toLocaleLowerCase()
@@ -657,18 +869,18 @@ function ChatListScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => voi
     setSwipedRoom(null)
   }, [chatFilter, chatQuery])
 
-  const visibleChatRooms = chatRoomsState
+  const visibleChatRooms = rooms
     .filter((room) => chatFilter === 'all' || room.kind === chatFilter)
     .filter((room) => !normalizedChatQuery || `${room.title} ${room.detail}`.toLocaleLowerCase().includes(normalizedChatQuery))
     .sort((firstRoom, secondRoom) => Number(secondRoom.pinned) - Number(firstRoom.pinned))
 
   const updateChatRoom = (roomId: string, update: Partial<Pick<ChatRoom, 'pinned' | 'muted'>>) => {
-    setChatRoomsState((rooms) => rooms.map((room) => room.id === roomId ? { ...room, ...update } : room))
+    onRoomsChange((currentRooms) => currentRooms.map((room) => room.id === roomId ? { ...room, ...update } : room))
   }
 
   const confirmLeaveRoom = () => {
     if (!pendingLeaveRoom) return
-    setChatRoomsState((rooms) => rooms.filter((room) => room.id !== pendingLeaveRoom.id))
+    onRoomsChange((currentRooms) => currentRooms.filter((room) => room.id !== pendingLeaveRoom.id))
     setPendingLeaveRoom(null)
     setSwipedRoom(null)
   }
@@ -682,7 +894,7 @@ function ChatListScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => voi
         <header className="chat-header">
           <h1>대회</h1>
           <div className="chat-header-actions">
-            <button type="button" aria-label="새 대화"><Icon src={friendsPlus} size={22} /></button>
+            <button type="button" aria-label="대회 참가하기" onClick={() => onNavigate('competition-join')}><Icon src={friendsPlus} size={22} /></button>
           </div>
         </header>
         <div className="chat-filter-tabs" role="tablist" aria-label="대화 필터">
@@ -714,13 +926,13 @@ function ChatListScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => voi
               openSwipe={swipedRoom?.id === room.id ? swipedRoom.side : null}
               onOpenActions={(side) => setSwipedRoom({ id: room.id, side })}
               onCloseActions={() => setSwipedRoom(null)}
-              onNavigate={() => onNavigate('chat-room')}
+              onNavigate={() => onOpenRoom(room)}
               onTogglePinned={() => updateChatRoom(room.id, { pinned: !room.pinned })}
               onToggleMuted={() => updateChatRoom(room.id, { muted: !room.muted })}
               onRequestLeave={() => setPendingLeaveRoom(room)}
             />
           ))}
-          {visibleChatRooms.length === 0 && <p className="chat-empty-state">{chatRoomsState.length === 0 ? '참여 중인 채팅방이 없습니다.' : '검색 결과가 없습니다.'}</p>}
+          {visibleChatRooms.length === 0 && <p className="chat-empty-state">{rooms.length === 0 ? '참여 중인 채팅방이 없습니다.' : '검색 결과가 없습니다.'}</p>}
         </section>
       </div>
       <div className="feed-bottom">
@@ -747,6 +959,7 @@ function ChatListScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => voi
 
 function ChatRoomScreen({
   onNavigate,
+  room,
   roomTimeline,
   viewCounts,
   onSendMessage,
@@ -757,6 +970,7 @@ function ChatRoomScreen({
   onCancelOpenOrder,
 }: {
   onNavigate: (screen: ScreenKey) => void
+  room: ChatRoom
   roomTimeline: RoomTimelineItem[]
   viewCounts: Record<SocialViewKind, number>
   onSendMessage: (message: string) => void
@@ -782,6 +996,7 @@ function ChatRoomScreen({
   const tradeSheetDismissTimerRef = useRef<number | null>(null)
   const chatSwipeStartYRef = useRef<number | null>(null)
   const canSendMessage = messageDraft.trim().length > 0
+  const isActiveCompetition = room.competitionState === 'active'
 
   useEffect(() => {
     if (roomTimeline.length > 0) {
@@ -958,17 +1173,17 @@ function ChatRoomScreen({
           <button type="button" className="chat-back-button" aria-label="대화 목록으로 이동" onClick={() => onNavigate('chat-list')}>‹</button>
           <div>
             <strong>
-              쌍디 투자대회방
-              <span className="chat-header-participants">4명</span>
+              {room.title}
+              {room.count && <span className="chat-header-participants">{room.count}명</span>}
             </strong>
-            <span>현재 2명 활동 중</span>
+            <span>{isActiveCompetition ? '대회 진행 중' : room.competitionState === 'chat-only' ? '투자 라운지' : '개인 대화'}</span>
           </div>
           <div className="chat-room-actions">
             <button type="button" aria-label="통화">◡</button>
             <button type="button" aria-label="더 보기">⋮</button>
           </div>
         </header>
-        <section className="chat-account-hud" aria-label="내 대회 현황">
+        {isActiveCompetition && <section className="chat-account-hud" aria-label="내 대회 현황">
           <div className="chat-account-hud-card">
             <div className="chat-account-hud-main">
               <span>내 총자산</span>
@@ -988,8 +1203,8 @@ function ChatRoomScreen({
               </div>
             </div>
           </div>
-        </section>
-        <div className="chat-date-divider">오늘, 2026년 2월 24일</div>
+        </section>}
+        <div className="chat-date-divider">{room.recentHistory?.length ? '참가 시점 기준 최근 3일 채팅' : '오늘, 2026년 2월 24일'}</div>
         <section
           id="chat-message-list"
           className="chat-messages"
@@ -1013,34 +1228,53 @@ function ChatRoomScreen({
             chatSwipeStartYRef.current = null
           }}
         >
-          <article className="chat-message incoming">
-            <img src={friendsProfile} alt="장우진" width="32" height="32" />
-            <div>
-              <span className="chat-message-name">장우진</span>
-              <p>하 반도체 좋아보이는데 사야되나?</p>
-              <time>오후 9:39</time>
+          {room.id === 'ssangddi' && (
+            <>
+              <article className="chat-message incoming">
+                <img src={friendsProfile} alt="장우진" width="32" height="32" />
+                <div>
+                  <span className="chat-message-name">장우진</span>
+                  <p>하 반도체 좋아보이는데 사야되나?</p>
+                  <time>오후 9:39</time>
+                </div>
+              </article>
+              <article className="chat-message outgoing">
+                <p>레알 사게? ㅋㅋ</p>
+                <time>오후 9:41</time>
+              </article>
+              <div className="chat-trade-alert" role="status">
+                <span className="chat-trade-alert-badge">매매</span>
+                <span>장우진님이 <strong>SK하이닉스 46주</strong>를 매수하셨습니다.</span>
+              </div>
+              <article className="chat-message outgoing">
+                <p>ㅄ ㅋㅋㅋㅋ 하닉을 사?</p>
+                <time>오후 9:42</time>
+              </article>
+              <div className="chat-trade-alert" role="status">
+                <span className="chat-trade-alert-badge">매도</span>
+                <span>김형진님이 <strong>SK하이닉스 100주</strong>를 매도하셨습니다.</span>
+              </div>
+              <article className="chat-message outgoing">
+                <p>잘 먹고 갑니다 ㅋㅋㅋㅋㅋ</p>
+                <time>오후 9:43</time>
+              </article>
+            </>
+          )}
+          {room.id !== 'ssangddi' && room.recentHistory?.map((historyItem, index) => (
+            <div className="chat-history-entry" key={historyItem.id}>
+              {(index === 0 || room.recentHistory?.[index - 1]?.sentOn !== historyItem.sentOn) && (
+                <div className="chat-history-day">{historyItem.sentOn}</div>
+              )}
+              <article className={`chat-message ${historyItem.mine ? 'outgoing' : 'incoming'}`}>
+                {!historyItem.mine && <img src={friendsProfile} alt="" width="32" height="32" />}
+                <div>
+                  {!historyItem.mine && <span className="chat-message-name">{historyItem.sender}</span>}
+                  <p>{historyItem.text}</p>
+                  <time>{historyItem.sentAt}</time>
+                </div>
+              </article>
             </div>
-          </article>
-          <article className="chat-message outgoing">
-            <p>레알 사게? ㅋㅋ</p>
-            <time>오후 9:41</time>
-          </article>
-          <div className="chat-trade-alert" role="status">
-            <span className="chat-trade-alert-badge">매매</span>
-            <span>장우진님이 <strong>SK하이닉스 46주</strong>를 매수하셨습니다.</span>
-          </div>
-          <article className="chat-message outgoing">
-            <p>ㅄ ㅋㅋㅋㅋ 하닉을 사?</p>
-            <time>오후 9:42</time>
-          </article>
-          <div className="chat-trade-alert" role="status">
-            <span className="chat-trade-alert-badge">매도</span>
-            <span>김형진님이 <strong>SK하이닉스 100주</strong>를 매도하셨습니다.</span>
-          </div>
-          <article className="chat-message outgoing">
-            <p>잘 먹고 갑니다 ㅋㅋㅋㅋㅋ</p>
-            <time>오후 9:43</time>
-          </article>
+          ))}
           {roomTimeline.map((item) => {
             if (item.kind === 'message') {
               return (
@@ -1061,7 +1295,7 @@ function ChatRoomScreen({
               )
             }
 
-            return (
+            if (item.kind === 'portfolio-share') return (
               <article className="chat-portfolio-share" key={item.id}>
                 <span className="chat-portfolio-share-badge">잔고 공유</span>
                 <strong>김형진님의 포트폴리오</strong>
@@ -1069,6 +1303,14 @@ function ChatRoomScreen({
                 <small>삼성전자 · SK하이닉스 외 3종목</small>
                 <time>{item.sentAt}</time>
               </article>
+            )
+
+            return (
+              <div className="chat-join-alert" role="status" key={item.id}>
+                <span className="chat-join-alert-badge">참가</span>
+                <span>김형진님이 {item.roomKind}에 참가했어요</span>
+                <time>{item.sentAt}</time>
+              </div>
             )
           })}
           <div ref={messagesEndRef} aria-hidden="true" />
@@ -1102,26 +1344,27 @@ function ChatRoomScreen({
         />
         <button
           type="button"
-          className={`chat-send-button ${canSendMessage ? 'is-message-send' : 'is-trade'}`}
-          aria-label={canSendMessage ? '메시지 전송' : '매매 주문 열기'}
+          className={`chat-send-button ${canSendMessage ? 'is-message-send' : isActiveCompetition ? 'is-trade' : 'is-lounge-send'}`}
+          aria-label={canSendMessage ? '메시지 전송' : isActiveCompetition ? '매매 주문 열기' : '메시지를 입력하면 전송할 수 있습니다'}
+          disabled={!canSendMessage && !isActiveCompetition}
           onPointerDown={(event) => {
             if (canSendMessage) event.preventDefault()
           }}
           onClick={() => {
             if (canSendMessage) sendMessage()
-            else {
+            else if (isActiveCompetition) {
               messageInputRef.current?.blur()
               openTradeSheet()
             }
           }}
         >
-          {canSendMessage ? '전송' : '매매'}
+          {canSendMessage ? '전송' : isActiveCompetition ? '매매' : '전송'}
         </button>
       </div>
       <div className="feed-bottom">
         <HomeIndicator />
       </div>
-      {isTradeSheetOpen && (
+      {isActiveCompetition && isTradeSheetOpen && (
         <div className={`trade-sheet-layer ${isTradeSheetDismissing ? 'is-dismissing' : ''}`}>
           <button
             type="button"
@@ -1166,6 +1409,311 @@ function ChatRoomScreen({
   )
 }
 
+function normalizeJoinCode(value: string) {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)
+}
+
+function extractJoinCode(value: string) {
+  try {
+    const inviteUrl = new URL(value)
+    const queryCode = inviteUrl.searchParams.get('invite')
+    if (queryCode) return normalizeJoinCode(queryCode)
+    const pathParts = inviteUrl.pathname.split('/').filter(Boolean)
+    return normalizeJoinCode(pathParts[pathParts.length - 1] ?? '')
+  } catch {
+    return normalizeJoinCode(value)
+  }
+}
+
+function MvpQrPattern({ seed, label }: { seed: string; label: string }) {
+  const size = 21
+  const seedValue = Array.from(seed).reduce((total, character, index) => total + character.charCodeAt(0) * (index + 3), 17)
+  const isFinderCell = (row: number, column: number, offsetRow: number, offsetColumn: number) => {
+    const localRow = row - offsetRow
+    const localColumn = column - offsetColumn
+    if (localRow < 0 || localRow > 6 || localColumn < 0 || localColumn > 6) return false
+    return localRow === 0 || localRow === 6 || localColumn === 0 || localColumn === 6 || (localRow >= 2 && localRow <= 4 && localColumn >= 2 && localColumn <= 4)
+  }
+
+  return (
+    <div className="mvp-qr" role="img" aria-label={label}>
+      {Array.from({ length: size * size }, (_, index) => {
+        const row = Math.floor(index / size)
+        const column = index % size
+        const finder = isFinderCell(row, column, 0, 0) || isFinderCell(row, column, 0, 14) || isFinderCell(row, column, 14, 0)
+        const payload = ((row * 17 + column * 31 + seedValue + (row * column * 7)) % 11) < 5
+        return <span className={finder || payload ? 'is-filled' : ''} key={index} />
+      })}
+    </div>
+  )
+}
+
+function UtilityScreenHeader({ title, onBack }: { title: string; onBack: () => void }) {
+  return (
+    <header className="utility-screen-header">
+      <button type="button" className="utility-back-button" aria-label="뒤로 가기" onClick={onBack}>‹</button>
+      <strong>{title}</strong>
+      <span aria-hidden="true" />
+    </header>
+  )
+}
+
+function CompetitionJoinScreen({ initialCode, onBack, onJoin }: {
+  initialCode: string
+  onBack: () => void
+  onJoin: (invite: CompetitionInvite) => void
+}) {
+  const [joinMethod, setJoinMethod] = useState<'code' | 'qr'>('code')
+  const [joinCode, setJoinCode] = useState(() => normalizeJoinCode(initialCode))
+  const [preview, setPreview] = useState<CompetitionInvite | null>(null)
+  const [joinError, setJoinError] = useState('')
+  const [qrStatus, setQrStatus] = useState('')
+
+  const resolveInvite = (rawCode: string) => {
+    const normalizedCode = extractJoinCode(rawCode)
+    setJoinCode(normalizedCode)
+    if (normalizedCode.length !== 8) {
+      setPreview(null)
+      setJoinError('참가 코드는 영문과 숫자 8자리입니다.')
+      return
+    }
+
+    const matchedInvite = competitionInvites.find((invite) => invite.code === normalizedCode)
+    if (!matchedInvite) {
+      setPreview(null)
+      setJoinError('유효하지 않거나 만료된 참가 코드입니다.')
+      return
+    }
+
+    setPreview(matchedInvite)
+    setJoinError('')
+  }
+
+  useEffect(() => {
+    if (initialCode) resolveInvite(initialCode)
+  }, [initialCode])
+
+  const readQrImage = async (file: File | undefined) => {
+    if (!file) return
+    setQrStatus('QR코드를 확인하고 있어요...')
+
+    type QrResult = { rawValue: string }
+    type QrDetector = { detect: (source: ImageBitmap) => Promise<QrResult[]> }
+    type QrDetectorConstructor = new (options: { formats: string[] }) => QrDetector
+    const Detector = (window as Window & { BarcodeDetector?: QrDetectorConstructor }).BarcodeDetector
+
+    if (!Detector) {
+      setQrStatus('이 브라우저는 QR 이미지 인식을 지원하지 않습니다. 참가 코드를 입력해주세요.')
+      return
+    }
+
+    try {
+      const bitmap = await createImageBitmap(file)
+      const detector = new Detector({ formats: ['qr_code'] })
+      const [result] = await detector.detect(bitmap)
+      bitmap.close()
+      if (!result) {
+        setQrStatus('QR코드를 찾지 못했습니다. 선명한 이미지를 다시 선택해주세요.')
+        return
+      }
+      resolveInvite(result.rawValue)
+      setQrStatus('QR코드를 인식했습니다.')
+    } catch {
+      setQrStatus('QR코드를 읽지 못했습니다. 참가 코드를 직접 입력해주세요.')
+    }
+  }
+
+  return (
+    <main className="app-shell utility-shell competition-join-screen">
+      <div className="utility-top-container">
+        <StatusBar icons={friendsIcons} nodePrefix="2" />
+        <UtilityScreenHeader title="대회 참가하기" onBack={onBack} />
+        <section className="utility-scroll-content">
+          <div className="join-intro">
+            <span className="utility-eyebrow">8자리 초대 코드</span>
+            <h1>초대받은 대회에 참가해요</h1>
+            <p>코드와 QR, 초대 링크는 같은 참가 권한으로 연결됩니다.</p>
+          </div>
+
+          <div className="join-method-tabs" role="tablist" aria-label="참가 방법">
+            <button type="button" className={joinMethod === 'code' ? 'is-active' : ''} role="tab" aria-selected={joinMethod === 'code'} onClick={() => setJoinMethod('code')}>코드 입력</button>
+            <button type="button" className={joinMethod === 'qr' ? 'is-active' : ''} role="tab" aria-selected={joinMethod === 'qr'} onClick={() => setJoinMethod('qr')}>QR 스캔</button>
+          </div>
+
+          {joinMethod === 'code' ? (
+            <form className="join-code-panel" onSubmit={(event) => { event.preventDefault(); resolveInvite(joinCode) }}>
+              <label htmlFor="competition-join-code">참가 코드</label>
+              <div className="join-code-input-row">
+                <input
+                  id="competition-join-code"
+                  value={joinCode}
+                  maxLength={8}
+                  autoCapitalize="characters"
+                  autoComplete="off"
+                  spellCheck={false}
+                  inputMode="text"
+                  placeholder="예: T26START"
+                  onChange={(event) => {
+                    setJoinCode(normalizeJoinCode(event.target.value))
+                    setJoinError('')
+                    setPreview(null)
+                  }}
+                />
+                <button type="submit" disabled={joinCode.length !== 8}>확인</button>
+              </div>
+              <small>테스트 코드: T26START · LOUNGE88</small>
+            </form>
+          ) : (
+            <section className="join-qr-panel">
+              <div className="join-qr-frame">
+                <MvpQrPattern seed="https://tiantou.app/j/T26START" label="대회 참가 QR 샘플" />
+                <span>QR을 사각형 안에 맞춰주세요</span>
+              </div>
+              <label className="join-qr-upload">
+                카메라 또는 앨범에서 QR 읽기
+                <input type="file" accept="image/*" capture="environment" onChange={(event) => void readQrImage(event.target.files?.[0])} />
+              </label>
+              <button type="button" className="join-qr-demo" onClick={() => { resolveInvite('T26START'); setQrStatus('샘플 QR을 인식했습니다.') }}>샘플 QR로 테스트</button>
+              {qrStatus && <p className="join-qr-status" role="status">{qrStatus}</p>}
+            </section>
+          )}
+
+          <div className="join-link-note">
+            <HomeQuickActionIcon kind="join" />
+            <span><strong>초대 링크로 들어왔나요?</strong><small>링크의 8자리 코드를 자동으로 인식해 이 화면을 바로 엽니다.</small></span>
+          </div>
+
+          {joinError && <p className="join-error" role="alert">{joinError}</p>}
+
+          {preview && (
+            <section className="competition-preview-card" aria-label="대회 미리보기">
+              <header>
+                <img src={preview.image} alt="" width="48" height="48" />
+                <span>
+                  <small>{preview.competitionState === 'active' ? '진행 중인 대회' : '투자 라운지'}</small>
+                  <strong>{preview.title}</strong>
+                </span>
+                <b>{preview.participantCount}명</b>
+              </header>
+              <dl>
+                <div><dt>현재 현황</dt><dd>{preview.competitionState === 'active' ? '대회 진행 중' : '채팅 라운지'}</dd></div>
+                {preview.competitionState === 'active' && <div><dt>대회 기간</dt><dd>{preview.startDate} – {preview.endDate}</dd></div>}
+                <div><dt>거래 가능 시장</dt><dd>{preview.market}</dd></div>
+                <div><dt>공매도</dt><dd>{preview.shortAllowed ? '허용' : '미허용'}</dd></div>
+              </dl>
+              <div className="competition-history-notice">참가하면 참가 시점 기준 최근 3일 채팅을 볼 수 있어요.</div>
+              <button type="button" className="competition-join-submit" onClick={() => onJoin(preview)}>바로 참가하기</button>
+            </section>
+          )}
+        </section>
+      </div>
+      <HomeIndicator />
+    </main>
+  )
+}
+
+function FriendCandidate({ profile, requested, onRequest }: { profile: FriendProfile; requested: boolean; onRequest: () => void }) {
+  return (
+    <article className="friend-candidate">
+      <span className="friend-candidate-avatar">{profile.name.slice(0, 1)}</span>
+      <span>
+        <strong>{profile.name}</strong>
+        <small>{profile.tiantouId} · {profile.grade}</small>
+      </span>
+      <button type="button" disabled={requested} onClick={onRequest}>{requested ? '요청됨' : '친구 요청'}</button>
+    </article>
+  )
+}
+
+function FriendAddScreen({ onBack, requestedFriendIds, onRequestFriend }: {
+  onBack: () => void
+  requestedFriendIds: string[]
+  onRequestFriend: (profile: FriendProfile) => void
+}) {
+  const [friendMethod, setFriendMethod] = useState<'qr' | 'contacts' | 'id'>('qr')
+  const [qrCandidate, setQrCandidate] = useState<FriendProfile | null>(null)
+  const [contactsLoaded, setContactsLoaded] = useState(false)
+  const [friendIdQuery, setFriendIdQuery] = useState('')
+  const [idCandidate, setIdCandidate] = useState<FriendProfile | null>(null)
+  const [idError, setIdError] = useState('')
+
+  const requestFriend = (profile: FriendProfile) => {
+    onRequestFriend(profile)
+  }
+
+  const searchFriendId = () => {
+    const normalizedId = friendIdQuery.trim().toLocaleLowerCase().replace(/^@?/, '@')
+    const matchedProfile = friendDirectory.find((profile) => profile.tiantouId.toLocaleLowerCase() === normalizedId)
+    setIdCandidate(matchedProfile ?? null)
+    setIdError(matchedProfile ? '' : '일치하는 천투 ID를 찾지 못했습니다.')
+  }
+
+  return (
+    <main className="app-shell utility-shell friend-add-screen">
+      <div className="utility-top-container">
+        <StatusBar icons={friendsIcons} nodePrefix="2" />
+        <UtilityScreenHeader title="친구 추가" onBack={onBack} />
+        <section className="utility-scroll-content">
+          <section className="my-qr-card">
+            <div className="my-qr-heading">
+              <img src={investProfile} alt="김형진" width="48" height="48" />
+              <span><small>내 천투 ID</small><strong>@hyeongjin367</strong></span>
+            </div>
+            <MvpQrPattern seed="https://tiantou.app/f/hyeongjin367" label="김형진님의 친구 추가 QR" />
+            <p>상대방이 이 QR을 스캔하면 내 프로필을 확인하고 친구 요청을 보낼 수 있어요.</p>
+            <div className="my-qr-actions">
+              <button type="button" onClick={() => void navigator.clipboard?.writeText('@hyeongjin367')}>ID 복사</button>
+              <button type="button" onClick={() => void navigator.clipboard?.writeText('https://tiantou.app/f/hyeongjin367')}>링크 복사</button>
+            </div>
+          </section>
+
+          <div className="friend-method-tabs" role="tablist" aria-label="친구 추가 방법">
+            {([['qr', 'QR코드'], ['contacts', '연락처'], ['id', 'ID 검색']] as const).map(([method, label]) => (
+              <button type="button" className={friendMethod === method ? 'is-active' : ''} role="tab" aria-selected={friendMethod === method} key={method} onClick={() => setFriendMethod(method)}>{label}</button>
+            ))}
+          </div>
+
+          {friendMethod === 'qr' && (
+            <section className="friend-method-panel">
+              <h2>친구 QR 스캔</h2>
+              <p>QR을 인식한 뒤 상대 프로필을 확인하고 요청을 보냅니다.</p>
+              <button type="button" className="friend-primary-action" onClick={() => setQrCandidate(friendDirectory[0])}>샘플 QR 스캔</button>
+              {qrCandidate && <FriendCandidate profile={qrCandidate} requested={requestedFriendIds.includes(qrCandidate.id)} onRequest={() => requestFriend(qrCandidate)} />}
+            </section>
+          )}
+
+          {friendMethod === 'contacts' && (
+            <section className="friend-method-panel">
+              <h2>연락처에서 찾기</h2>
+              <p>사용자가 직접 허용한 경우에만 연락처를 확인하며 전화번호는 다른 사람에게 표시하지 않습니다.</p>
+              {!contactsLoaded && <button type="button" className="friend-primary-action" onClick={() => setContactsLoaded(true)}>연락처 선택하기</button>}
+              {contactsLoaded && (
+                <div className="friend-candidate-list">
+                  {friendDirectory.map((profile) => <FriendCandidate profile={profile} requested={requestedFriendIds.includes(profile.id)} onRequest={() => requestFriend(profile)} key={profile.id} />)}
+                </div>
+              )}
+            </section>
+          )}
+
+          {friendMethod === 'id' && (
+            <section className="friend-method-panel">
+              <h2>천투 ID로 찾기</h2>
+              <p>정확한 ID를 입력해야 검색됩니다. 테스트 ID는 @minsu77입니다.</p>
+              <form className="friend-id-search" onSubmit={(event) => { event.preventDefault(); searchFriendId() }}>
+                <input value={friendIdQuery} placeholder="@tiantou_id" autoCapitalize="none" autoComplete="off" onChange={(event) => { setFriendIdQuery(event.target.value); setIdError(''); setIdCandidate(null) }} />
+                <button type="submit" disabled={!friendIdQuery.trim()}>검색</button>
+              </form>
+              {idError && <p className="friend-id-error" role="alert">{idError}</p>}
+              {idCandidate && <FriendCandidate profile={idCandidate} requested={requestedFriendIds.includes(idCandidate.id)} onRequest={() => requestFriend(idCandidate)} />}
+            </section>
+          )}
+        </section>
+      </div>
+      <HomeIndicator />
+    </main>
+  )
+}
+
 function SplashScreen() {
   return (
     <main className="app-shell splash-shell" data-name="splash-screen" data-node-id="2:12">
@@ -1187,16 +1735,23 @@ function HomeIndicator() {
   return <div className="home-indicator"><div /></div>
 }
 
-function HomeFeed({ mode, onModeChange, cardVariant, onNavigate }: { mode: FeedMode; onModeChange: (mode: FeedMode) => void; cardVariant: InvestCardVariant; onNavigate: (screen: ScreenKey) => void }) {
+function HomeFeed({ mode, onModeChange, cardVariant, onNavigate, investRoomItems, friendItems }: {
+  mode: FeedMode
+  onModeChange: (mode: FeedMode) => void
+  cardVariant: InvestCardVariant
+  onNavigate: (screen: ScreenKey) => void
+  investRoomItems: typeof investRooms
+  friendItems: FriendProfile[]
+}) {
   const icons = mode === 'invest' ? investIcons : friendsIcons
   const isFriends = mode === 'friends'
   const [searchQuery, setSearchQuery] = useState('')
   const normalizedSearchQuery = searchQuery.trim().toLocaleLowerCase()
-  const visibleInvestRooms = investRooms.filter((room) => (
+  const visibleInvestRooms = investRoomItems.filter((room) => (
     !normalizedSearchQuery
     || `${room.title} ${room.scheduleLabel} ${room.leaderboard.join(' ')} ${room.holdings.map((holding) => holding.name).join(' ')}`.toLocaleLowerCase().includes(normalizedSearchQuery)
   ))
-  const visibleFriends = friends.filter((friend) => (
+  const visibleFriends = friendItems.filter((friend) => (
     !normalizedSearchQuery
     || `${friend.name} ${friend.grade}`.toLocaleLowerCase().includes(normalizedSearchQuery)
   ))
@@ -1206,7 +1761,14 @@ function HomeFeed({ mode, onModeChange, cardVariant, onNavigate }: { mode: FeedM
     <main className={`app-shell feed-shell ${isFriends ? 'friends-feed' : 'invest-feed'}`} data-name={isFriends ? 'home-feed-freinds' : 'home-feed-invest'}>
       <div className="feed-top-container">
         <StatusBar icons={icons} nodePrefix={isFriends ? '7' : '2'} />
-        <FeedHeader icons={icons} nodePrefix={isFriends ? '7' : '2'} />
+        <FeedHeader
+          icons={icons}
+          nodePrefix={isFriends ? '7' : '2'}
+          onQuickAction={(action) => {
+            if (action === 'join') onNavigate('competition-join')
+            if (action === 'friend') onNavigate('friend-add')
+          }}
+        />
         <TickerBelt nodePrefix={isFriends ? '7' : '2'} />
         <HeroBanner profile={isFriends ? friendsProfile : investProfile} nodePrefix={isFriends ? '7' : '2'} />
 
@@ -1231,7 +1793,12 @@ function HomeFeed({ mode, onModeChange, cardVariant, onNavigate }: { mode: FeedM
 
 export default function App() {
   const [mode, setMode] = useState<FeedMode>('invest')
-  const [roomTimeline, setRoomTimeline] = useState<RoomTimelineItem[]>([])
+  const [chatRoomItems, setChatRoomItems] = useState<ChatRoom[]>(chatRooms)
+  const [investRoomItems, setInvestRoomItems] = useState(investRooms)
+  const [friendItems] = useState<FriendProfile[]>(friends)
+  const [requestedFriendIds, setRequestedFriendIds] = useState<string[]>([])
+  const [activeRoomId, setActiveRoomId] = useState('ssangddi')
+  const [roomTimelines, setRoomTimelines] = useState<Record<string, RoomTimelineItem[]>>({})
   const [openOrders, setOpenOrders] = useState<OpenOrder[]>(initialOpenOrders)
   const [viewCounts, setViewCounts] = useState<Record<SocialViewKind, number>>({ balance: 0, ranking: 0 })
   const socialViewTrackerRef = useRef<Record<SocialViewKind, SocialViewTracker>>({
@@ -1240,8 +1807,10 @@ export default function App() {
   })
   const [screen, setScreen] = useState<ScreenKey>(() => {
     if (typeof window === 'undefined') return 'home'
-    const requestedScreen = new URLSearchParams(window.location.search).get('screen')
-    if (requestedScreen === 'chat-list' || requestedScreen === 'chat-room' || requestedScreen === 'splash') return requestedScreen
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('invite')) return 'competition-join'
+    const requestedScreen = params.get('screen')
+    if (requestedScreen === 'chat-list' || requestedScreen === 'chat-room' || requestedScreen === 'competition-join' || requestedScreen === 'friend-add' || requestedScreen === 'splash') return requestedScreen
     return 'home'
   })
 
@@ -1250,6 +1819,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     if (nextScreen === 'home') params.delete('screen')
     else params.set('screen', nextScreen)
+    if (nextScreen !== 'competition-join') params.delete('invite')
     const query = params.toString()
     window.history.pushState({}, '', query ? `/?${query}` : '/')
   }
@@ -1262,18 +1832,19 @@ export default function App() {
     return `${period} ${displayHour}:${String(now.getMinutes()).padStart(2, '0')}`
   }
 
+  const appendRoomTimeline = (roomId: string, item: RoomTimelineItem) => {
+    setRoomTimelines((currentTimelines) => ({
+      ...currentTimelines,
+      [roomId]: [...(currentTimelines[roomId] ?? []), item],
+    }))
+  }
+
   const sendChatMessage = (message: string) => {
-    setRoomTimeline((currentTimeline) => [
-      ...currentTimeline,
-      { id: crypto.randomUUID(), kind: 'message', text: message, sentAt: getCurrentChatTime() },
-    ])
+    appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'message', text: message, sentAt: getCurrentChatTime() })
   }
 
   const addViewMilestone = (viewKind: SocialViewKind, count: number) => {
-    setRoomTimeline((currentTimeline) => [
-      ...currentTimeline,
-      { id: crypto.randomUUID(), kind: 'view-event', viewKind, count, sentAt: getCurrentChatTime() },
-    ])
+    appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'view-event', viewKind, count, sentAt: getCurrentChatTime() })
   }
 
   const recordSocialView = (viewKind: SocialViewKind) => {
@@ -1294,10 +1865,7 @@ export default function App() {
   }
 
   const sharePortfolio = () => {
-    setRoomTimeline((currentTimeline) => [
-      ...currentTimeline,
-      { id: crypto.randomUUID(), kind: 'portfolio-share', sentAt: getCurrentChatTime() },
-    ])
+    appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'portfolio-share', sentAt: getCurrentChatTime() })
   }
 
   const updateOpenOrder = (orderId: string, update: OpenOrderUpdate) => {
@@ -1310,12 +1878,98 @@ export default function App() {
     setOpenOrders((currentOrders) => currentOrders.filter((order) => order.id !== orderId))
   }
 
-  if (screen === 'chat-list') return <ChatListScreen onNavigate={navigate} />
+  const openChatRoom = (room: ChatRoom) => {
+    setActiveRoomId(room.id)
+    navigate('chat-room')
+  }
+
+  const joinCompetition = (invite: CompetitionInvite) => {
+    const roomId = `invite-${invite.code.toLocaleLowerCase()}`
+    const existingRoom = chatRoomItems.find((room) => room.id === roomId)
+    if (existingRoom) {
+      openChatRoom(existingRoom)
+      return
+    }
+
+    const joinedParticipantCount = invite.participantCount + 1
+    const joinedRoom: ChatRoom = {
+      id: roomId,
+      title: invite.title,
+      detail: `김형진님이 ${invite.competitionState === 'active' ? '대회' : '라운지'}에 참가했어요`,
+      meta: '방금',
+      count: String(joinedParticipantCount),
+      unread: 0,
+      muted: false,
+      pinned: false,
+      kind: 'group',
+      competitionState: invite.competitionState,
+      recentHistory: invite.recentHistory,
+      image: invite.image,
+    }
+
+    setChatRoomItems((currentRooms) => [joinedRoom, ...currentRooms])
+    setRoomTimelines((currentTimelines) => ({
+      ...currentTimelines,
+      [roomId]: [{
+        id: crypto.randomUUID(),
+        kind: 'join-event',
+        roomKind: invite.competitionState === 'active' ? '대회' : '라운지',
+        sentAt: getCurrentChatTime(),
+      }],
+    }))
+
+    if (invite.competitionState === 'active') {
+      setInvestRoomItems((currentRooms) => currentRooms.some((room) => room.title === invite.title) ? currentRooms : [
+        {
+          title: invite.title,
+          rank: `#${joinedParticipantCount} / ${joinedParticipantCount}`,
+          returnValue: '0.0%',
+          returnTone: 'positive',
+          scheduleLabel: `진행 중 · ${invite.endDate} 종료`,
+          rankStatus: '방금 참가',
+          image: invite.image,
+          leaderboard: ['1위 박민수 +12.8%', '2위 이서연 +8.1%', `${joinedParticipantCount}위 김형진 0.0%`],
+          holdings: [{ name: '현금', weight: '100%' }],
+        },
+        ...currentRooms,
+      ])
+    }
+
+    setActiveRoomId(roomId)
+    navigate('chat-room')
+  }
+
+  const activeRoom = chatRoomItems.find((room) => room.id === activeRoomId) ?? chatRoomItems[0]
+
+  if (screen === 'competition-join') {
+    const initialCode = typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('invite') ?? ''
+    return <CompetitionJoinScreen initialCode={initialCode} onBack={() => navigate('home')} onJoin={joinCompetition} />
+  }
+  if (screen === 'friend-add') {
+    return (
+      <FriendAddScreen
+        onBack={() => navigate('home')}
+        requestedFriendIds={requestedFriendIds}
+        onRequestFriend={(profile) => setRequestedFriendIds((currentIds) => currentIds.includes(profile.id) ? currentIds : [...currentIds, profile.id])}
+      />
+    )
+  }
+  if (screen === 'chat-list') {
+    return (
+      <ChatListScreen
+        onNavigate={navigate}
+        rooms={chatRoomItems}
+        onRoomsChange={(updater) => setChatRoomItems(updater)}
+        onOpenRoom={openChatRoom}
+      />
+    )
+  }
   if (screen === 'chat-room') {
     return (
       <ChatRoomScreen
         onNavigate={navigate}
-        roomTimeline={roomTimeline}
+        room={activeRoom}
+        roomTimeline={roomTimelines[activeRoom.id] ?? []}
         viewCounts={viewCounts}
         onSendMessage={sendChatMessage}
         onRecordSocialView={recordSocialView}
@@ -1327,5 +1981,5 @@ export default function App() {
     )
   }
   if (screen === 'splash') return <SplashScreen />
-  return <HomeFeed mode={mode} onModeChange={setMode} cardVariant={getInvestCardVariant()} onNavigate={navigate} />
+  return <HomeFeed mode={mode} onModeChange={setMode} cardVariant={getInvestCardVariant()} onNavigate={navigate} investRoomItems={investRoomItems} friendItems={friendItems} />
 }
