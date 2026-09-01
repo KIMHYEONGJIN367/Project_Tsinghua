@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { PortfolioSheet, RankingSheet } from './AccountSheets'
 import {
   CompetitionHostSheet,
+  CompetitionMulliganIcon,
   CompetitionParticipationSheet,
   CompetitionTrophyIcon,
   MAX_COMPETITION_PARTICIPANTS,
@@ -1459,7 +1460,11 @@ function ChatRoomScreen({
             <div className="chat-account-hud-footer">
               <span className="chat-account-deadline"><b>{competitionRemainingDays === 0 ? 'D-DAY' : `D-${competitionRemainingDays}`}</b><span>{competitionEndLabel} 종료</span></span>
               <div className={hasMulliganRule ? 'has-mulligan' : ''}>
-                {hasMulliganRule && <button type="button" className="chat-mulligan-button" disabled={mulligansRemaining === 0} onClick={() => setIsMulliganConfirmOpen(true)}>멀리건 {mulligansRemaining}</button>}
+                {hasMulliganRule && (
+                  <button type="button" className="chat-mulligan-button" disabled={mulligansRemaining === 0} aria-label={`멀리건 ${mulligansRemaining}회 남음`} onClick={() => setIsMulliganConfirmOpen(true)}>
+                    <CompetitionMulliganIcon /><span>멀리건</span><b>{mulligansRemaining}</b>
+                  </button>
+                )}
                 <button type="button" onClick={openRankingSheet}>순위</button>
                 <button type="button" onClick={openPortfolioSheet}>잔고</button>
               </div>
@@ -1760,16 +1765,26 @@ function ChatRoomScreen({
         <div className="competition-mulligan-layer">
           <button type="button" className="competition-mulligan-backdrop" aria-label="멀리건 사용 취소" onClick={() => setIsMulliganConfirmOpen(false)} />
           <section className="competition-mulligan-dialog" role="alertdialog" aria-modal="true" aria-labelledby="mulligan-dialog-title">
-            <span className="competition-mulligan-mark" aria-hidden="true">↺</span>
-            <small>남은 멀리건 {mulligansRemaining}회</small>
-            <h2 id="mulligan-dialog-title">내 계좌를 처음부터 다시 시작할까요?</h2>
+            <div className="competition-mulligan-grabber" aria-hidden="true" />
+            <header>
+              <span className="competition-mulligan-mark"><CompetitionMulliganIcon /></span>
+              <div><small>MULLIGAN</small><strong>다시 시작 기회</strong></div>
+              <em>{mulligansRemaining}회 남음</em>
+            </header>
+            <h2 id="mulligan-dialog-title">내 계좌를 초기자본으로<br />되돌릴까요?</h2>
+            <p className="competition-mulligan-intro">지금까지의 포지션을 정리하고 같은 대회에서 새로 시작합니다.</p>
+            <div className="competition-mulligan-balance-preview">
+              <div><small>현재 총자산</small><strong>{formatWon(competitionAsset)}</strong><em className={competitionReturn >= 0 ? 'is-positive' : 'is-negative'}>{formatReturn(competitionReturn)}</em></div>
+              <span aria-hidden="true">→</span>
+              <div><small>초기화 후</small><strong>{formatWon(room.competition.initialCapital)}</strong><em>0.0%</em></div>
+            </div>
             <ul>
-              <li>미체결 주문을 모두 취소해요</li>
-              <li>Long·Short 보유 포지션을 모두 정리해요</li>
-              <li>총자산 {formatWon(room.competition.initialCapital)} · 손익 0원 · 수익률 0.0%</li>
+              <li><span>01</span><div><strong>미체결 주문 취소</strong><small>대기 중인 주문을 모두 취소해요</small></div></li>
+              <li><span>02</span><div><strong>보유 포지션 정리</strong><small>Long·Short 잔고를 모두 비워요</small></div></li>
+              <li><span>03</span><div><strong>현금 100%로 재시작</strong><small>손익 0원 · 수익률 0.0%로 돌아가요</small></div></li>
             </ul>
-            <p>사용한 횟수는 되돌릴 수 없고 과거 거래 기록은 남아요.</p>
-            <div><button type="button" onClick={() => setIsMulliganConfirmOpen(false)}>아니요</button><button type="button" onClick={() => { onUseMulligan(); setIsMulliganConfirmOpen(false); setIsPortfolioSheetOpen(false); closeTradeSheet() }}>멀리건 사용</button></div>
+            <p className="competition-mulligan-warning"><strong>되돌릴 수 없어요.</strong> 이전 거래 기록은 보존되고 사용 횟수는 다시 채워지지 않습니다.</p>
+            <div className="competition-mulligan-actions"><button type="button" onClick={() => setIsMulliganConfirmOpen(false)}>돌아가기</button><button type="button" onClick={() => { onUseMulligan(); setIsMulliganConfirmOpen(false); setIsPortfolioSheetOpen(false); closeTradeSheet() }}>1회 사용하고 초기화</button></div>
           </section>
         </div>
       )}

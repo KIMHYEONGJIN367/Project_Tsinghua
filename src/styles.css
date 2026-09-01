@@ -4759,8 +4759,8 @@ body:has(.splash-shell) {
 }
 
 .chat-account-hud-footer > div.has-mulligan {
-  width: 188px;
-  grid-template-columns: 1.25fr repeat(2, minmax(0, 1fr));
+  width: 192px;
+  grid-template-columns: 1.4fr repeat(2, minmax(0, 1fr));
   gap: 4px;
 }
 
@@ -4782,9 +4782,40 @@ body:has(.splash-shell) {
 }
 
 .chat-account-hud-footer .chat-mulligan-button {
-  border-color: rgba(255, 239, 183, 0.5);
-  background: rgba(255, 232, 158, 0.18);
-  color: #fff4c7;
+  display: flex;
+  padding: 0 5px;
+  border-color: rgba(255, 239, 203, 0.46);
+  background: linear-gradient(135deg, rgba(255, 238, 190, 0.22), rgba(255, 255, 255, 0.1));
+  color: #fff8dd;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.chat-account-hud-footer .chat-mulligan-button svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.chat-account-hud-footer .chat-mulligan-button span {
+  font-size: 7.5px;
+  letter-spacing: -.1px;
+}
+
+.chat-account-hud-footer .chat-mulligan-button b {
+  display: grid;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #fff3cf;
+  color: #7d2730;
+  place-items: center;
+  font-size: 7px;
 }
 
 .chat-account-hud-footer .chat-mulligan-button:disabled {
@@ -7690,45 +7721,220 @@ body:has(.utility-shell) {
   white-space: nowrap;
 }
 
-.competition-mulligan-options {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+.competition-mulligan-setting {
+  position: relative;
+  overflow: hidden;
+  margin: 0 0 17px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, .09);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 86% 5%, rgba(246, 196, 166, .18), transparent 38%),
+    linear-gradient(145deg, #352726 0%, #55282d 54%, #762b35 100%);
+  box-shadow: 0 12px 28px rgba(83, 38, 42, .16);
+  color: #fff;
 }
 
-.competition-mulligan-options button {
+.competition-mulligan-setting > header {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+}
+
+.competition-mulligan-setting-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  border: 1px solid rgba(255, 244, 224, .22);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .1);
+  color: #ffd9b8;
+  place-items: center;
+}
+
+.competition-mulligan-setting-icon svg {
+  width: 19px;
+  height: 19px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.75;
+}
+
+.competition-mulligan-setting > header > div {
   display: flex;
-  min-height: 48px;
-  padding: 7px 4px;
-  border: 1px solid #e5dcd8;
-  border-radius: 10px;
-  background: #fff;
-  color: #756965;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.competition-mulligan-setting > header small {
+  color: rgba(255, 255, 255, .53);
+  font-size: 6.5px;
+  font-weight: 700;
+  letter-spacing: .8px;
+}
+
+.competition-mulligan-setting > header strong {
+  font-size: 12px;
+  font-weight: 820;
+}
+
+.competition-mulligan-setting > header em {
+  padding: 5px 7px;
+  border: 1px solid rgba(255, 239, 213, .2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .08);
+  color: #ffe6c8;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 760;
+}
+
+.competition-mulligan-stepper {
+  display: grid;
+  min-height: 72px;
+  margin-top: 13px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 15px;
+  background: rgba(24, 15, 16, .22);
+  grid-template-columns: 46px minmax(0, 1fr) 46px;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.competition-mulligan-stepper > button {
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .1);
+  color: #ffe8d0;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.competition-mulligan-stepper > button:disabled {
+  opacity: .28;
+}
+
+.competition-mulligan-stepper > div {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-content: center;
+  justify-content: center;
+  column-gap: 3px;
+}
+
+.competition-mulligan-stepper > div strong {
+  color: #fff9ed;
+  font-size: 29px;
+  font-weight: 760;
+  line-height: .9;
+}
+
+.competition-mulligan-stepper > div span {
+  align-self: end;
+  padding-bottom: 2px;
+  color: #f6c9a8;
+  font-size: 9px;
+  font-weight: 760;
+}
+
+.competition-mulligan-stepper > div small {
+  grid-column: 1 / -1;
+  margin-top: 5px;
+  color: rgba(255, 255, 255, .52);
+  font-size: 6.5px;
+  text-align: center;
+}
+
+.competition-mulligan-scale {
+  position: relative;
+  display: grid;
+  margin: 12px 5px 0;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.competition-mulligan-scale::before {
+  position: absolute;
+  top: 5px;
+  right: 12.5%;
+  left: 12.5%;
+  height: 1px;
+  background: rgba(255, 255, 255, .18);
+  content: '';
+}
+
+.competition-mulligan-scale button {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: rgba(255, 255, 255, .46);
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 3px;
+  gap: 5px;
+  outline: none;
 }
 
-.competition-mulligan-options button strong {
-  font-size: 9px;
+.competition-mulligan-scale button:focus-visible {
+  border-radius: 7px;
+  box-shadow: 0 0 0 2px rgba(255, 218, 185, .42);
 }
 
-.competition-mulligan-options button small {
+.competition-mulligan-scale button i {
+  width: 11px;
+  height: 11px;
+  border: 2px solid #66454a;
+  border-radius: 50%;
+  background: #443034;
+  box-shadow: 0 0 0 2px #4c3035;
+}
+
+.competition-mulligan-scale button span {
   font-size: 7px;
+  font-weight: 700;
 }
 
-.competition-mulligan-options button.is-selected {
-  border-color: #a82d37;
-  background: #fff3f1;
-  color: #982631;
+.competition-mulligan-scale button.is-selected {
+  color: #ffe4c4;
 }
 
-.competition-mulligan-help {
-  margin: 7px 1px 0;
-  color: #948781;
-  font-size: 8px;
-  line-height: 1.45;
+.competition-mulligan-scale button.is-selected i {
+  border-color: #ffd4ae;
+  background: #ffd4ae;
+  box-shadow: 0 0 0 3px rgba(255, 212, 174, .16);
+}
+
+.competition-mulligan-effects {
+  display: flex;
+  margin-top: 13px;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.competition-mulligan-effects span {
+  padding: 5px 7px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .09);
+  color: rgba(255, 255, 255, .72);
+  font-size: 6.5px;
+  font-weight: 650;
+}
+
+.competition-mulligan-effects span::before {
+  margin-right: 4px;
+  color: #f5c59f;
+  content: '✓';
+}
+
+.competition-mulligan-setting > p {
+  margin: 9px 1px 0;
+  color: rgba(255, 255, 255, .58);
+  font-size: 7.5px;
+  line-height: 1.5;
 }
 
 .competition-fixed-market {
@@ -7887,9 +8093,8 @@ body:has(.utility-shell) {
   position: absolute;
   z-index: 95;
   inset: 0;
-  display: grid;
-  place-items: center;
-  padding: 22px;
+  display: flex;
+  align-items: flex-end;
 }
 
 .competition-mulligan-backdrop {
@@ -7904,69 +8109,217 @@ body:has(.utility-shell) {
   position: relative;
   display: flex;
   width: 100%;
-  padding: 22px 18px 16px;
-  border-radius: 20px;
+  max-height: 92%;
+  overflow-y: auto;
+  padding: 9px 18px calc(16px + env(safe-area-inset-bottom));
+  border-radius: 24px 24px 0 0;
   background: #fffdfb;
-  box-shadow: 0 18px 52px rgba(34, 23, 21, 0.28);
+  box-shadow: 0 -18px 54px rgba(34, 23, 21, 0.24);
   flex-direction: column;
+  text-align: left;
+}
+
+.competition-mulligan-grabber {
+  width: 34px;
+  height: 4px;
+  margin: 0 auto 14px;
+  border-radius: 999px;
+  background: #ded6d2;
+}
+
+.competition-mulligan-dialog > header {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
   align-items: center;
-  text-align: center;
+  gap: 10px;
 }
 
 .competition-mulligan-mark {
   display: grid;
-  width: 42px;
-  height: 42px;
-  margin-bottom: 8px;
-  border-radius: 50%;
-  background: #f3dfdc;
+  width: 40px;
+  height: 40px;
+  border-radius: 13px;
+  background: linear-gradient(145deg, #f8e8dc, #f1d4d2);
   color: #a52c36;
   place-items: center;
-  font-size: 25px;
-  font-weight: 700;
 }
 
-.competition-mulligan-dialog > small {
-  color: #a52c36;
-  font-size: 8px;
+.competition-mulligan-mark svg {
+  width: 21px;
+  height: 21px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.competition-mulligan-dialog > header > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.competition-mulligan-dialog > header small {
+  color: #ae7b72;
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+}
+
+.competition-mulligan-dialog > header strong {
+  color: #423735;
+  font-size: 10px;
+}
+
+.competition-mulligan-dialog > header em {
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: #f7ece7;
+  color: #9c2b35;
+  font-size: 7px;
+  font-style: normal;
   font-weight: 800;
 }
 
 .competition-mulligan-dialog h2 {
-  max-width: 250px;
-  margin: 7px 0 12px;
+  margin: 19px 0 6px;
   color: #2f2826;
-  font-size: 17px;
-  line-height: 1.28;
+  font-size: 20px;
+  line-height: 1.25;
+  letter-spacing: -.5px;
 }
 
-.competition-mulligan-dialog ul {
-  width: 100%;
+.competition-mulligan-intro {
   margin: 0;
-  padding: 10px 13px 10px 28px;
-  border-radius: 12px;
-  background: #f7f2ef;
-  color: #5f5350;
-  font-size: 9px;
-  line-height: 1.8;
-  text-align: left;
-}
-
-.competition-mulligan-dialog > p {
-  margin: 10px 0 14px;
-  color: #958984;
+  color: #8e817c;
   font-size: 8px;
   line-height: 1.45;
 }
 
-.competition-mulligan-dialog > div {
+.competition-mulligan-balance-preview {
   display: grid;
+  margin-top: 15px;
+  padding: 12px;
+  border: 1px solid #eee4df;
+  border-radius: 15px;
+  background: linear-gradient(135deg, #fbf7f4, #f7f0ed);
+  grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+}
+
+.competition-mulligan-balance-preview > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.competition-mulligan-balance-preview > div:last-child {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.competition-mulligan-balance-preview small {
+  color: #9a8c86;
+  font-size: 6.5px;
+}
+
+.competition-mulligan-balance-preview strong {
+  overflow: hidden;
+  color: #382f2c;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.competition-mulligan-balance-preview em {
+  color: #887a75;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 760;
+}
+
+.competition-mulligan-balance-preview em.is-positive {
+  color: #be3a3e;
+}
+
+.competition-mulligan-balance-preview em.is-negative {
+  color: #3868b7;
+}
+
+.competition-mulligan-balance-preview > span {
+  color: #b8aba5;
+  font-size: 13px;
+  text-align: center;
+}
+
+.competition-mulligan-dialog ul {
   width: 100%;
-  grid-template-columns: 1fr 1.25fr;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.competition-mulligan-dialog li {
+  display: grid;
+  min-height: 45px;
+  border-bottom: 1px solid #f1ebe8;
+  grid-template-columns: 28px minmax(0, 1fr);
+  align-items: center;
   gap: 8px;
 }
 
-.competition-mulligan-dialog > div button {
+.competition-mulligan-dialog li > span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  background: #f4e9e5;
+  color: #aa3941;
+  place-items: center;
+  font-size: 6.5px;
+  font-weight: 820;
+}
+
+.competition-mulligan-dialog li > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.competition-mulligan-dialog li strong {
+  color: #4a3e3a;
+  font-size: 8.5px;
+}
+
+.competition-mulligan-dialog li small {
+  color: #998c87;
+  font-size: 7px;
+}
+
+.competition-mulligan-warning {
+  margin: 10px 0 13px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: #fff4e8;
+  color: #8b7161;
+  font-size: 7px;
+  line-height: 1.45;
+}
+
+.competition-mulligan-warning strong {
+  color: #8e3438;
+}
+
+.competition-mulligan-actions {
+  display: grid;
+  width: 100%;
+  grid-template-columns: .82fr 1.5fr;
+  gap: 8px;
+}
+
+.competition-mulligan-actions button {
   min-height: 42px;
   border: 0;
   border-radius: 11px;
@@ -7976,9 +8329,10 @@ body:has(.utility-shell) {
   font-weight: 800;
 }
 
-.competition-mulligan-dialog > div button:last-child {
-  background: #a52c36;
+.competition-mulligan-actions button:last-child {
+  background: linear-gradient(135deg, #8f2630, #b63740);
   color: #fff;
+  box-shadow: 0 7px 16px rgba(151, 38, 47, .2);
 }
 
 @media (max-height: 760px) {

@@ -162,6 +162,15 @@ export function CompetitionTrophyIcon() {
   )
 }
 
+export function CompetitionMulliganIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M19.25 8.25V4.5m0 0H15.5m3.75 0-3.07 3.07A7 7 0 1 0 18.45 15" />
+      <path d="M12 8.25v4.2l2.8 1.65" />
+    </svg>
+  )
+}
+
 function CompetitionRuleSummary({ competition }: { competition: LoungeCompetition }) {
   return (
     <dl className="competition-rule-summary">
@@ -337,18 +346,33 @@ export function CompetitionHostSheet({ loungeTitle, competition, onClose, onCrea
           <i aria-hidden="true" />
         </label>
 
-        <fieldset className="competition-form-field">
-          <legend><strong>멀리건</strong><small>참가자별 계좌 리셋 횟수</small></legend>
-          <div className="competition-mulligan-options" role="radiogroup" aria-label="멀리건 허용 횟수">
+        <section className="competition-mulligan-setting" aria-labelledby="mulligan-setting-title">
+          <header>
+            <span className="competition-mulligan-setting-icon"><CompetitionMulliganIcon /></span>
+            <div>
+              <small>선택 규칙</small>
+              <strong id="mulligan-setting-title">멀리건</strong>
+            </div>
+            <em>{mulliganLimit === 0 ? '사용 안 함' : `참가자당 ${mulliganLimit}회`}</em>
+          </header>
+          <div className="competition-mulligan-stepper">
+            <button type="button" aria-label="멀리건 횟수 줄이기" disabled={mulliganLimit === 0} onClick={() => setMulliganLimit((current) => Math.max(0, current - 1) as 0 | 1 | 2 | 3)}>−</button>
+            <div aria-live="polite"><strong>{mulliganLimit}</strong><span>회</span><small>참가자 한 명당</small></div>
+            <button type="button" aria-label="멀리건 횟수 늘리기" disabled={mulliganLimit === 3} onClick={() => setMulliganLimit((current) => Math.min(3, current + 1) as 0 | 1 | 2 | 3)}>＋</button>
+          </div>
+          <div className="competition-mulligan-scale" role="radiogroup" aria-label="멀리건 허용 횟수">
             {([0, 1, 2, 3] as const).map((count) => (
               <button type="button" role="radio" aria-checked={mulliganLimit === count} className={mulliganLimit === count ? 'is-selected' : ''} onClick={() => setMulliganLimit(count)} key={count}>
-                <strong>{count === 0 ? '없음' : `${count}회`}</strong>
-                <small>{count === 0 ? '리셋 불가' : count === 1 ? '한 번 다시' : `${count}번 다시`}</small>
+                <i aria-hidden="true" />
+                <span>{count === 0 ? 'OFF' : `${count}회`}</span>
               </button>
             ))}
           </div>
-          <p className="competition-mulligan-help">사용하면 미체결과 보유 포지션을 정리하고 초기자본·손익 0원으로 다시 시작해요.</p>
-        </fieldset>
+          <div className="competition-mulligan-effects" aria-label="멀리건 적용 내용">
+            <span>미체결 취소</span><span>포지션 정리</span><span>손익 0원</span>
+          </div>
+          <p>참가자가 직접 사용하며, 초기자본으로 돌아가도 이전 거래 기록과 사용 횟수는 그대로 남아요.</p>
+        </section>
 
         <section className="competition-lock-note"><strong>규칙은 대회가 끝날 때까지 잠겨요</strong><span>예약 상태에서도 수정할 수 없고 취소 후 다시 설정해야 합니다.</span></section>
         {submitError && <p className="competition-form-error" role="alert">{submitError}</p>}
