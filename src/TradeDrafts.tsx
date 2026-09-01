@@ -128,7 +128,7 @@ function InstrumentAccess({
                     onSearchFocusChange(false)
                   }}
                 >
-                  <span><strong>{instrument.name}</strong><small>{instrument.code}</small></span>
+                  <span><strong>{instrument.name}</strong><small>{instrument.code} · {instrument.category ?? '주식'}</small></span>
                   <span><strong>{formatWon(instrument.price)}</strong><small className={instrument.change >= 0 ? 'is-positive' : 'is-negative'}>{instrument.change >= 0 ? '+' : ''}{instrument.change}%</small></span>
                 </button>
               ))}
@@ -177,7 +177,7 @@ function QuoteAndCapacity({ direction, instrument, maxQuantity }: {
   return (
     <>
       <div className="ticket-quote-row">
-        <span><strong>{instrument.name}</strong><small>{instrument.code} · 현재가</small></span>
+        <span><strong>{instrument.name}</strong><small>{instrument.code} · {instrument.category ?? '주식'} · 현재가</small></span>
         <span><strong>{formatWon(instrument.price)}</strong><small className={instrument.change >= 0 ? 'is-positive' : 'is-negative'}>{instrument.change >= 0 ? '+' : ''}{instrument.change}%</small></span>
       </div>
       <div className="ticket-capacity-grid">

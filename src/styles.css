@@ -2229,6 +2229,83 @@ body:has(.chat-list-screen) {
   color: #ffffff;
 }
 
+.chat-confirm-destructive:disabled {
+  border-color: #ddd5d1;
+  background: #e8e2df;
+  color: #a39a96;
+}
+
+.host-successor-fieldset {
+  display: grid;
+  margin: 14px 0 0;
+  padding: 0;
+  border: 0;
+  gap: 6px;
+}
+
+.host-successor-fieldset legend {
+  width: 100%;
+  margin-bottom: 2px;
+  color: #8b7d77;
+  font-size: 8px;
+  font-weight: 650;
+  text-align: left;
+}
+
+.host-successor-fieldset label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: 38px;
+  padding: 7px 9px;
+  border: 1px solid #e9e1dd;
+  border-radius: 11px;
+  background: #fff;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
+.host-successor-fieldset label.is-selected {
+  border-color: #ac343d;
+  background: #fff4f2;
+}
+
+.host-successor-fieldset input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.host-successor-fieldset label > span {
+  display: grid;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #efe7e3;
+  color: #9d2b34;
+  place-items: center;
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.host-successor-fieldset label > strong {
+  color: #413834;
+  font-size: 9px;
+}
+
+.host-successor-fieldset label > small {
+  color: #9a8e88;
+  font-size: 7px;
+}
+
+.host-successor-fieldset > p {
+  padding: 10px;
+  border-radius: 10px;
+  background: #f4f0ed;
+  text-align: left;
+}
+
 .chat-list-screen .bottom-nav {
   border-top-color: #e8e8e4;
   background: #f8f8f6;
@@ -6979,8 +7056,19 @@ body:has(.utility-shell) {
 
 .competition-context-card.is-closed,
 .competition-context-card.is-forfeited,
-.competition-context-card.is-ended {
+.competition-context-card.is-ended,
+.competition-context-card.is-invalidated {
   background: #f8f5f3;
+}
+
+.competition-context-card.is-invalidated {
+  border-color: #decfca;
+  background: linear-gradient(135deg, #f5eeeb 0%, #faf8f7 100%);
+}
+
+.competition-context-card.is-invalidated .competition-context-icon {
+  background: #e8ded9;
+  color: #766762;
 }
 
 .competition-context-card.is-scheduled {
@@ -7241,6 +7329,11 @@ body:has(.utility-shell) {
 .competition-phase-badge.is-host {
   background: #f3dfdc;
   color: #9a2731;
+}
+
+.competition-phase-badge.is-invalidated {
+  background: #e8dfdb;
+  color: #6f625d;
 }
 
 .competition-lifecycle-scroll {
@@ -7561,6 +7654,11 @@ body:has(.utility-shell) {
   color: #887b75;
   font-size: 8px;
   line-height: 1.45;
+}
+
+.competition-lock-note.is-invalid-warning {
+  background: #fff0ed;
+  color: #9a2932;
 }
 
 .competition-join-window:not(.is-closed) {

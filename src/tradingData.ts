@@ -1,6 +1,7 @@
 export type Instrument = {
   name: string
   code: string
+  category?: '주식' | 'ETF' | '리츠'
   price: number
   change: number
   longQuantity?: number
@@ -37,6 +38,8 @@ export const instruments: Instrument[] = [
   { name: 'NAVER', code: '035420', price: 214_500, change: 0.4, longQuantity: 11 },
   { name: 'LG에너지솔루션', code: '373220', price: 381_000, change: -0.7, longQuantity: 5 },
   { name: 'POSCO홀딩스', code: '005490', price: 348_500, change: -0.5, shortQuantity: 6 },
+  { name: 'KODEX 200', code: '069500', category: 'ETF', price: 37_850, change: 0.6 },
+  { name: 'SK리츠', code: '395400', category: '리츠', price: 4_835, change: -0.2 },
 ]
 
 export const initialOpenOrders: OpenOrder[] = [

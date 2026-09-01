@@ -4,10 +4,14 @@ import {
   CompetitionHostSheet,
   CompetitionParticipationSheet,
   CompetitionTrophyIcon,
+  MAX_COMPETITION_PARTICIPANTS,
   addCalendarDays,
   createCompetitionFromDraft,
+  formatCompetitionBoundary,
   formatCompetitionDate,
   getCompetitionRemainingDays,
+  hasCompetitionReachedRankedDuration,
+  isCompetitionAtCapacity,
   isCompetitionJoinOpen,
   type CompetitionDraft,
   type CompetitionMembership,
@@ -57,7 +61,7 @@ type NavKey = 'home' | 'chat' | 'invest' | 'my'
 type ChatFilter = 'all' | 'group' | 'personal'
 type ChatRoomKind = 'group' | 'personal'
 type ChatSwipeSide = 'leading' | 'trailing'
-type ChatCompetitionState = 'scheduled' | 'active' | 'ended' | 'chat-only'
+type ChatCompetitionState = 'scheduled' | 'active' | 'ended' | 'invalidated' | 'chat-only'
 type MyPanelKey = 'profile' | 'records' | 'notifications' | 'friends' | 'devices' | 'visibility' | 'support'
 
 type SocialViewKind = 'balance' | 'ranking'
@@ -77,7 +81,7 @@ type RoomTimelineItem =
   | { id: string; kind: 'portfolio-share'; sentAt: string }
   | { id: string; kind: 'join-event'; roomKind: '대회' | '라운지'; sentAt: string }
   | { id: string; kind: 'lounge-create-event'; sentAt: string }
-  | { id: string; kind: 'competition-event'; eventType: 'scheduled' | 'started' | 'cancelled' | 'ended' | 'forfeited'; title: string; detail: string; sentAt: string }
+  | { id: string; kind: 'competition-event'; eventType: 'scheduled' | 'started' | 'cancelled' | 'ended' | 'invalidated' | 'forfeited' | 'host-transferred'; title: string; detail: string; sentAt: string }
 
 type FriendProfile = {
   id: string
@@ -97,6 +101,7 @@ type CompetitionInvite = {
   market: string
   shortAllowed: boolean
   initialCapital: number
+  competitionParticipantCount?: number
   image: string
   recentHistory: ChatHistoryItem[]
 }
@@ -166,7 +171,7 @@ const investRooms = [
     rank: '#2 / 4',
     returnValue: '+28.4%',
     returnTone: 'positive',
-    scheduleLabel: '종료 D-23 · 2026.09.24',
+    scheduleLabel: '종료 D-26 · 2026.09.27',
     rankStatus: '진행 중',
     image: investRoom,
     leaderboard: ['1위 김영규 + 122.1%', '2위 장우진 +28.4%', '3위 김형진 +12.4%'],
@@ -178,7 +183,7 @@ const investRooms = [
   },
   {
     title: '카카오 투자대회',
-    rank: '#15 / 32',
+    rank: '#8 / 10',
     returnValue: '-15.8%',
     returnTone: 'negative',
     scheduleLabel: '종료 · 2026.07.31',
@@ -193,7 +198,7 @@ const investRooms = [
   },
   {
     title: '테슬라 투자대회',
-    rank: '#6 / 18',
+    rank: '#6 / 10',
     returnValue: '+9.6%',
     returnTone: 'positive',
     scheduleLabel: '종료 D-7 · 2026.08.31',
@@ -258,13 +263,15 @@ const chatRooms: ChatRoom[] = [
       phase: 'active',
       initialCapital: 15_000_000,
       durationDays: 30,
-      startDate: '2026-08-25',
-      endDate: '2026-09-24',
-      joinDeadline: '2026-09-17',
+      startDate: '2026-08-29',
+      endDate: '2026-09-27',
+      joinDeadline: '2026-09-20',
       market: 'KOSPI · KOSDAQ',
       shortAllowed: true,
       feeBps: 20,
       taxBps: 0,
+      participantCount: 4,
+      participantLimit: 10,
     },
     image: investRoom,
   },
@@ -284,6 +291,7 @@ const competitionInvites: CompetitionInvite[] = [
     market: 'KOSPI · KOSDAQ',
     shortAllowed: true,
     initialCapital: 10_000_000,
+    competitionParticipantCount: 8,
     image: investRoom,
     recentHistory: [
       { id: 'summer-history-1', sender: '박민수', text: '오늘 장 시작부터 변동성 엄청 크네요.', sentOn: '8월 28일', sentAt: '오전 9:18' },
@@ -1001,7 +1009,7 @@ function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigat
             <strong>{room.title}</strong>
             {room.competitionState && (
               <span className={`chat-room-status is-${room.competitionState}`}>
-                {room.competitionState === 'active' ? '대회 중' : room.competitionState === 'scheduled' ? '예약' : room.competitionState === 'ended' ? '종료' : '라운지'}
+                {room.competitionState === 'active' ? '대회 중' : room.competitionState === 'scheduled' ? '예약' : room.competitionState === 'invalidated' ? '무효' : room.competitionState === 'ended' ? '종료' : '라운지'}
               </span>
             )}
             {room.competitionMembership === 'eligible' && <span className="chat-membership-status is-eligible">참여 대기</span>}
@@ -1031,12 +1039,13 @@ function ChatListScreen({ onNavigate, rooms, onRoomsChange, onOpenRoom, onForfei
   rooms: ChatRoom[]
   onRoomsChange: (updater: (rooms: ChatRoom[]) => ChatRoom[]) => void
   onOpenRoom: (room: ChatRoom) => void
-  onForfeitRoom: (room: ChatRoom) => void
+  onForfeitRoom: (room: ChatRoom, successorName?: string) => void
 }) {
   const [chatFilter, setChatFilter] = useState<ChatFilter>('all')
   const [chatQuery, setChatQuery] = useState('')
   const [swipedRoom, setSwipedRoom] = useState<{ id: string; side: ChatSwipeSide } | null>(null)
   const [pendingLeaveRoom, setPendingLeaveRoom] = useState<ChatRoom | null>(null)
+  const [pendingHostSuccessor, setPendingHostSuccessor] = useState('')
   const normalizedChatQuery = chatQuery.trim().toLocaleLowerCase()
 
   useEffect(() => {
@@ -1054,17 +1063,21 @@ function ChatListScreen({ onNavigate, rooms, onRoomsChange, onOpenRoom, onForfei
 
   const confirmLeaveRoom = () => {
     if (!pendingLeaveRoom) return
+    const requiresHostTransfer = pendingLeaveRoom.kind === 'group' && pendingLeaveRoom.isHost
+    if (requiresHostTransfer && !pendingHostSuccessor) return
     const shouldForfeit = pendingLeaveRoom.kind === 'group'
       && pendingLeaveRoom.competitionState === 'active'
       && pendingLeaveRoom.competitionMembership === 'participant'
     if (shouldForfeit) {
-      onForfeitRoom(pendingLeaveRoom)
+      onForfeitRoom(pendingLeaveRoom, pendingHostSuccessor || undefined)
       setPendingLeaveRoom(null)
+      setPendingHostSuccessor('')
       setSwipedRoom(null)
       return
     }
     onRoomsChange((currentRooms) => currentRooms.filter((room) => room.id !== pendingLeaveRoom.id))
     setPendingLeaveRoom(null)
+    setPendingHostSuccessor('')
     setSwipedRoom(null)
   }
 
@@ -1072,6 +1085,10 @@ function ChatListScreen({ onNavigate, rooms, onRoomsChange, onOpenRoom, onForfei
     && pendingLeaveRoom.competitionState === 'active'
     && pendingLeaveRoom.competitionMembership === 'participant'
   const pendingLeaveAction = pendingLeaveIsForfeit ? '포기하기' : '나가기'
+  const pendingLeaveRequiresHostTransfer = Boolean(pendingLeaveRoom?.kind === 'group' && pendingLeaveRoom.isHost)
+  const successorCandidates = Number(pendingLeaveRoom?.count ?? 0) > 1
+    ? friends.filter((profile) => profile.id !== 'kim-hyeong-jin').slice(0, 3)
+    : []
 
   return (
     <main className="app-shell chat-shell chat-list-screen" data-name="chat-list" data-node-id="2:126">
@@ -1113,7 +1130,7 @@ function ChatListScreen({ onNavigate, rooms, onRoomsChange, onOpenRoom, onForfei
               onNavigate={() => onOpenRoom(room)}
               onTogglePinned={() => updateChatRoom(room.id, { pinned: !room.pinned })}
               onToggleMuted={() => updateChatRoom(room.id, { muted: !room.muted })}
-              onRequestLeave={() => setPendingLeaveRoom(room)}
+              onRequestLeave={() => { setPendingHostSuccessor(''); setPendingLeaveRoom(room) }}
             />
           ))}
           {visibleChatRooms.length === 0 && <p className="chat-empty-state">{rooms.length === 0 ? '참여 중인 채팅방이 없습니다.' : '검색 결과가 없습니다.'}</p>}
@@ -1125,14 +1142,28 @@ function ChatListScreen({ onNavigate, rooms, onRoomsChange, onOpenRoom, onForfei
       </div>
       {pendingLeaveRoom && (
         <div className="chat-confirm-layer">
-          <button type="button" className="chat-confirm-backdrop" aria-label="확인 창 닫기" onClick={() => setPendingLeaveRoom(null)} />
+          <button type="button" className="chat-confirm-backdrop" aria-label="확인 창 닫기" onClick={() => { setPendingLeaveRoom(null); setPendingHostSuccessor('') }} />
           <section className="chat-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="chat-confirm-title" aria-describedby="chat-confirm-description">
-            <span className="chat-confirm-badge">{pendingLeaveIsForfeit ? '대회' : '라운지'}</span>
-            <h2 id="chat-confirm-title">{pendingLeaveAction} 하시겠어요?</h2>
-            <p id="chat-confirm-description"><strong>{pendingLeaveRoom.title}</strong>{pendingLeaveIsForfeit ? '에서 포기하면 완주자보다 아래에 기록되고 라운지에는 관망자로 남습니다.' : '에서 나가면 대화 목록에서 사라집니다.'}</p>
+            <span className="chat-confirm-badge">{pendingLeaveRequiresHostTransfer ? '방장 위임 필수' : pendingLeaveIsForfeit ? '대회' : '라운지'}</span>
+            <h2 id="chat-confirm-title">{pendingLeaveRequiresHostTransfer ? '다음 방장을 정해 주세요' : `${pendingLeaveAction} 하시겠어요?`}</h2>
+            <p id="chat-confirm-description"><strong>{pendingLeaveRoom.title}</strong>{pendingLeaveRequiresHostTransfer ? `의 방장을 넘긴 뒤 ${pendingLeaveIsForfeit ? '포기할' : '나갈'} 수 있어요.` : pendingLeaveIsForfeit ? '에서 포기하면 모든 포기자와 공동 꼴등으로 기록되고 라운지에는 관망자로 남습니다.' : '에서 나가면 대화 목록에서 사라집니다.'}</p>
+            {pendingLeaveRequiresHostTransfer && (
+              <fieldset className="host-successor-fieldset">
+                <legend>{pendingLeaveIsForfeit ? '현재 대회 참가자 중 선택' : '현재 라운지 멤버 중 선택'}</legend>
+                {successorCandidates.map((candidate) => (
+                  <label className={pendingHostSuccessor === candidate.name ? 'is-selected' : ''} key={candidate.id}>
+                    <input type="radio" name="host-successor" value={candidate.name} checked={pendingHostSuccessor === candidate.name} onChange={() => setPendingHostSuccessor(candidate.name)} />
+                    <span>{candidate.name.slice(0, 1)}</span>
+                    <strong>{candidate.name}</strong>
+                    <small>{candidate.grade.replace('등급 ', '')}</small>
+                  </label>
+                ))}
+                {successorCandidates.length === 0 && <p>위임할 다른 멤버가 없어 지금은 {pendingLeaveAction}할 수 없어요.</p>}
+              </fieldset>
+            )}
             <div className="chat-confirm-actions">
-              <button type="button" className="chat-confirm-cancel" onClick={() => setPendingLeaveRoom(null)}>취소</button>
-              <button type="button" className="chat-confirm-destructive" onClick={confirmLeaveRoom}>{pendingLeaveAction}</button>
+              <button type="button" className="chat-confirm-cancel" onClick={() => { setPendingLeaveRoom(null); setPendingHostSuccessor('') }}>취소</button>
+              <button type="button" className="chat-confirm-destructive" disabled={pendingLeaveRequiresHostTransfer && !pendingHostSuccessor} onClick={confirmLeaveRoom}>{pendingLeaveRequiresHostTransfer ? `위임 후 ${pendingLeaveAction}` : pendingLeaveAction}</button>
             </div>
           </section>
         </div>
@@ -1194,7 +1225,9 @@ function ChatRoomScreen({
   const canSendMessage = messageDraft.trim().length > 0
   const isActiveCompetition = room.competitionState === 'active'
   const isCompetitionParticipant = isActiveCompetition && room.competitionMembership === 'participant'
+  const competitionAtCapacity = Boolean(room.competition && isCompetitionAtCapacity(room.competition))
   const canJoinCompetition = Boolean(room.competition && room.competitionMembership === 'eligible' && isCompetitionJoinOpen(room.competition))
+  const joinClosedLabel = competitionAtCapacity ? '대회 참가 정원 마감' : '대회 참가 마감'
   const usesExistingPortfolioMock = room.competition?.id === 'competition-ssangddi'
   const competitionAsset = usesExistingPortfolioMock ? TOTAL_ASSET : room.competition?.initialCapital ?? TOTAL_ASSET
   const competitionReturn = usesExistingPortfolioMock ? TOTAL_RETURN : 0
@@ -1379,19 +1412,19 @@ function ChatRoomScreen({
               {room.title}
               {room.count && <span className="chat-header-participants">{room.count}명</span>}
             </strong>
-            <span>{isActiveCompetition ? '대회 진행 중' : room.competitionState === 'scheduled' ? '대회 예약됨' : room.competitionState === 'ended' ? '대회 종료 · 라운지' : room.competitionState === 'chat-only' ? '투자 라운지' : '개인 대화'}</span>
+            <span>{isActiveCompetition ? '대회 진행 중' : room.competitionState === 'scheduled' ? '대회 예약됨' : room.competitionState === 'invalidated' ? '대회 무효 · 라운지' : room.competitionState === 'ended' ? '대회 종료 · 라운지' : room.competitionState === 'chat-only' ? '투자 라운지' : '개인 대화'}</span>
           </div>
           <div className="chat-room-actions">
             {room.kind === 'group' && room.isHost && (
-              <button type="button" className="competition-header-action is-host" aria-label={room.competitionState === 'chat-only' || room.competitionState === 'ended' ? '대회 주최하기' : '대회 관리'} onClick={() => setIsCompetitionHostSheetOpen(true)}>
+              <button type="button" className="competition-header-action is-host" aria-label={room.competitionState === 'chat-only' || room.competitionState === 'ended' || room.competitionState === 'invalidated' ? '대회 주최하기' : '대회 관리'} onClick={() => setIsCompetitionHostSheetOpen(true)}>
                 <CompetitionTrophyIcon />
-                <small>{room.competitionState === 'chat-only' || room.competitionState === 'ended' ? '주최' : '관리'}</small>
+                <small>{room.competitionState === 'chat-only' || room.competitionState === 'ended' || room.competitionState === 'invalidated' ? '주최' : '관리'}</small>
               </button>
             )}
             {room.kind === 'group' && !room.isHost && room.competitionState === 'active' && room.competitionMembership === 'eligible' && (
-              <button type="button" className="competition-header-action is-join" aria-label={canJoinCompetition ? '대회 참여하기' : '대회 참가 마감'} disabled={!canJoinCompetition} onClick={() => setIsCompetitionParticipationSheetOpen(true)}>
+              <button type="button" className="competition-header-action is-join" aria-label={canJoinCompetition ? '대회 참여하기' : joinClosedLabel} disabled={!canJoinCompetition} onClick={() => setIsCompetitionParticipationSheetOpen(true)}>
                 <CompetitionTrophyIcon />
-                <small>{canJoinCompetition ? '참여' : '마감'}</small>
+                <small>{canJoinCompetition ? '참여' : competitionAtCapacity ? '정원' : '마감'}</small>
               </button>
             )}
             <button type="button" aria-label="더 보기">⋮</button>
@@ -1408,7 +1441,7 @@ function ChatRoomScreen({
             <div className="chat-account-hud-rank" aria-label={usesExistingPortfolioMock ? `현재 ${CURRENT_RANK}위, 4명 중` : '참여 직후 순위 집계 전'}>
               <span>현재 순위</span>
               <strong>{usesExistingPortfolioMock ? <><b>{CURRENT_RANK}</b>위</> : '집계 전'}</strong>
-              <small>{usesExistingPortfolioMock ? '4명 중' : `${room.count || '-'}명 중`}</small>
+              <small>{usesExistingPortfolioMock ? '4명 중' : `${room.competition?.participantCount ?? '-'}명 중`}</small>
             </div>
             <div className="chat-account-hud-footer">
               <span className="chat-account-deadline"><b>{competitionRemainingDays === 0 ? 'D-DAY' : `D-${competitionRemainingDays}`}</b><span>{competitionEndLabel} 종료</span></span>
@@ -1422,21 +1455,21 @@ function ChatRoomScreen({
         {room.competitionState === 'scheduled' && room.competition && (
           <section className="competition-context-card is-scheduled">
             <span className="competition-context-icon"><CompetitionTrophyIcon /></span>
-            <div><small>대회 예약</small><strong>{room.competition.title}</strong><p>{formatCompetitionDate(room.competition.startDate)} 정규장부터 시작해요.</p></div>
+            <div><small>대회 예약</small><strong>{room.competition.title}</strong><p>{formatCompetitionBoundary(room.competition.startDate)} 기준으로 시작해요.</p></div>
             {room.isHost && <button type="button" onClick={() => setIsCompetitionHostSheetOpen(true)}>관리</button>}
           </section>
         )}
         {isActiveCompetition && room.competitionMembership === 'eligible' && room.competition && (
           <section className={`competition-context-card ${canJoinCompetition ? 'is-open' : 'is-closed'}`}>
             <span className="competition-context-icon"><CompetitionTrophyIcon /></span>
-            <div><small>{canJoinCompetition ? '대회 참여 가능' : '참가 마감 · 관망 가능'}</small><strong>{room.competition.title}</strong><p>{canJoinCompetition ? `${formatCompetitionDate(room.competition.joinDeadline)}까지 직접 참여를 선택해 주세요.` : '채팅과 대회 흐름은 계속 볼 수 있어요.'}</p></div>
+            <div><small>{canJoinCompetition ? '대회 참여 가능' : competitionAtCapacity ? '정원 마감 · 관망 가능' : '참가 마감 · 관망 가능'}</small><strong>{room.competition.title}</strong><p>{canJoinCompetition ? `${formatCompetitionBoundary(room.competition.joinDeadline)} 전까지 직접 참여해 주세요. ${room.competition.participantCount}/${room.competition.participantLimit}명` : '채팅과 대회 흐름은 계속 볼 수 있어요.'}</p></div>
             {canJoinCompetition && <button type="button" onClick={() => setIsCompetitionParticipationSheetOpen(true)}>참여하기</button>}
           </section>
         )}
         {isActiveCompetition && room.competitionMembership === 'forfeited' && (
           <section className="competition-context-card is-forfeited">
             <span className="competition-context-icon"><CompetitionTrophyIcon /></span>
-            <div><small>포기 · 관망 중</small><strong>라운지에는 그대로 남아 있어요</strong><p>완주자보다 아래에 기록되며 매매는 할 수 없습니다.</p></div>
+            <div><small>포기 · 관망 중</small><strong>라운지에는 그대로 남아 있어요</strong><p>모든 포기자와 공동 꼴등이며 매매는 할 수 없습니다.</p></div>
           </section>
         )}
         {room.competitionState === 'chat-only' && room.kind === 'group' && room.isHost && (
@@ -1450,6 +1483,13 @@ function ChatRoomScreen({
           <section className="competition-context-card is-ended">
             <span className="competition-context-icon"><CompetitionTrophyIcon /></span>
             <div><small>대회 종료</small><strong>{room.competition.title}</strong><p>종료 시점 NAV로 최종 순위가 확정됐어요.</p></div>
+            {room.isHost && <button type="button" onClick={() => setIsCompetitionHostSheetOpen(true)}>다음 대회</button>}
+          </section>
+        )}
+        {room.competitionState === 'invalidated' && room.competition && (
+          <section className="competition-context-card is-invalidated">
+            <span className="competition-context-icon"><CompetitionTrophyIcon /></span>
+            <div><small>대회 무효</small><strong>{room.competition.title}</strong><p>시작 후 7일 전에 종료되어 최종 순위가 없습니다.</p></div>
             {room.isHost && <button type="button" onClick={() => setIsCompetitionHostSheetOpen(true)}>다음 대회</button>}
           </section>
         )}
@@ -1563,7 +1603,7 @@ function ChatRoomScreen({
             )
 
             if (item.kind === 'competition-event') {
-              const eventLabel = item.eventType === 'scheduled' ? '예약' : item.eventType === 'started' ? '시작' : item.eventType === 'cancelled' ? '취소' : item.eventType === 'forfeited' ? '포기' : '종료'
+              const eventLabel = item.eventType === 'scheduled' ? '예약' : item.eventType === 'started' ? '시작' : item.eventType === 'cancelled' ? '취소' : item.eventType === 'invalidated' ? '무효' : item.eventType === 'forfeited' ? '포기' : item.eventType === 'host-transferred' ? '방장 위임' : '종료'
               return (
                 <div className={`chat-competition-event is-${item.eventType}`} role="status" key={item.id}>
                   <span className="chat-competition-event-icon"><CompetitionTrophyIcon /></span>
@@ -1970,10 +2010,11 @@ function CompetitionJoinScreen({ initialCode, onBack, onJoin }: {
               <dl>
                 <div><dt>현재 현황</dt><dd>{preview.competitionState === 'active' ? '대회 진행 중' : '채팅 라운지'}</dd></div>
                 {preview.competitionState === 'active' && preview.startDate && preview.endDate && <div><dt>대회 기간</dt><dd>{formatCompetitionDate(preview.startDate)} – {formatCompetitionDate(preview.endDate)}</dd></div>}
+                {preview.competitionState === 'active' && <div><dt>대회 참가</dt><dd>{preview.competitionParticipantCount ?? 1}/{MAX_COMPETITION_PARTICIPANTS}명</dd></div>}
                 <div><dt>거래 가능 시장</dt><dd>{preview.market}</dd></div>
                 <div><dt>공매도</dt><dd>{preview.shortAllowed ? '허용' : '미허용'}</dd></div>
               </dl>
-              {preview.competitionState === 'active' && preview.endDate && <div className="competition-history-notice">라운지 가입 후 {formatCompetitionDate(addCalendarDays(preview.endDate, -7))}까지 대회 참여를 선택할 수 있어요.</div>}
+              {preview.competitionState === 'active' && preview.endDate && <div className="competition-history-notice">라운지 가입 후 {formatCompetitionBoundary(addCalendarDays(preview.endDate, -7))} 전까지 대회 참여를 선택할 수 있어요.</div>}
               <div className="competition-history-notice">가입하면 가입 시점 기준 최근 3일 채팅을 볼 수 있어요.</div>
               <button type="button" className="competition-join-submit" onClick={() => onJoin(preview)}>라운지 참가하기</button>
             </section>
@@ -2577,6 +2618,8 @@ export default function App() {
         shortAllowed: true,
         feeBps: 20,
         taxBps: 0,
+        participantCount: Math.min(Number(getParticipantCount(feedRoom)), MAX_COMPETITION_PARTICIPANTS),
+        participantLimit: 10,
       },
       image: feedRoom.image,
     }
@@ -2651,7 +2694,7 @@ export default function App() {
           title: invite.title,
           phase: 'active',
           initialCapital: invite.initialCapital,
-          durationDays: Math.max(7, Math.round((new Date(`${invite.endDate}T00:00:00+09:00`).getTime() - new Date(`${invite.startDate}T00:00:00+09:00`).getTime()) / 86_400_000)),
+          durationDays: Math.max(7, Math.round((new Date(`${invite.endDate}T00:00:00+09:00`).getTime() - new Date(`${invite.startDate}T00:00:00+09:00`).getTime()) / 86_400_000) + 1),
           startDate: invite.startDate,
           endDate: invite.endDate,
           joinDeadline: addCalendarDays(invite.endDate, -7),
@@ -2659,6 +2702,8 @@ export default function App() {
           shortAllowed: invite.shortAllowed,
           feeBps: 20,
           taxBps: 0,
+          participantCount: invite.competitionParticipantCount ?? 1,
+          participantLimit: 10,
         }
       : undefined
     const joinedRoom: ChatRoom = {
@@ -2696,7 +2741,7 @@ export default function App() {
   }
 
   const addCompetitionHomeCard = (room: ChatRoom, competition: LoungeCompetition, rankStatus: string) => {
-    const participantCount = Number(room.count || 1)
+    const participantCount = competition.participantCount
     setInvestRoomItems((currentRooms) => currentRooms.some((item) => item.title === competition.title) ? currentRooms : [
       {
         title: competition.title,
@@ -2719,19 +2764,19 @@ export default function App() {
     const competition = createCompetitionFromDraft(draft)
     const eventType = competition.phase === 'active' ? 'started' : 'scheduled'
     const detail = competition.phase === 'active'
-      ? `${formatCompetitionDate(competition.endDate)}까지 진행하며 규칙은 종료 전까지 바뀌지 않아요.`
-      : `${formatCompetitionDate(competition.startDate)} 정규장 시작으로 예약됐어요.`
+      ? `${formatCompetitionDate(competition.endDate)}까지 진행하며 모든 날짜 경계는 00:00 KST예요.`
+      : `${formatCompetitionBoundary(competition.startDate)} 시작으로 예약됐어요.`
 
     setChatRoomItems((currentRooms) => currentRooms.map((item) => item.id === activeRoomId ? {
       ...item,
       competition,
       competitionState: competition.phase,
-      competitionMembership: competition.phase === 'active' ? 'participant' : 'none',
+      competitionMembership: 'participant',
       detail: competition.phase === 'active' ? `${competition.title} 대회가 시작됐어요` : `${competition.title} 대회가 예약됐어요`,
       meta: '방금',
     } : item))
     appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'competition-event', eventType, title: competition.title, detail, sentAt: getCurrentChatTime() })
-    setCompetitionNotice(competition.phase === 'active' ? '대회가 시작됐어요. 라운지 멤버에게 시작 알림을 보냅니다.' : '대회가 예약됐어요. 라운지 멤버에게 예약 알림을 보냅니다.')
+    setCompetitionNotice(competition.phase === 'active' ? '대회가 시작됐어요. 음소거와 관계없이 모든 멤버에게 시작 알림을 보냅니다.' : '대회가 예약됐어요. 라운지 알림 설정에 따라 예약 알림을 보냅니다.')
     if (competition.phase === 'active') addCompetitionHomeCard(room, competition, '방장 · 참가 중')
   }
 
@@ -2748,52 +2793,59 @@ export default function App() {
       meta: '방금',
     } : item))
     appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'competition-event', eventType: 'cancelled', title: competitionTitle, detail: '방장이 대회 예약을 취소했어요. 새 규칙으로 다시 설정할 수 있습니다.', sentAt: getCurrentChatTime() })
-    setCompetitionNotice('대회 예약이 취소됐어요. 라운지 멤버에게 취소 알림을 보냅니다.')
+    setCompetitionNotice('대회 예약이 취소됐어요. 라운지 알림 설정에 따라 취소 알림을 보냅니다.')
   }
 
   const stopRoomCompetition = () => {
     const room = chatRoomItems.find((item) => item.id === activeRoomId)
     if (!room?.competition || room.competition.phase !== 'active' || !room.isHost) return
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())
-    const endedCompetition: LoungeCompetition = { ...room.competition, phase: 'ended', endDate: today }
+    const rankedStop = hasCompetitionReachedRankedDuration(room.competition)
+    const endPhase = rankedStop ? 'ended' : 'invalidated'
+    const endedCompetition: LoungeCompetition = { ...room.competition, phase: endPhase, endDate: today }
     setChatRoomItems((currentRooms) => currentRooms.map((item) => item.id === activeRoomId ? {
       ...item,
       competition: endedCompetition,
-      competitionState: 'ended',
+      competitionState: endPhase,
       competitionMembership: 'none',
-      detail: `${endedCompetition.title} 대회가 중도 종료됐어요`,
+      detail: rankedStop ? `${endedCompetition.title} 대회가 중도 종료됐어요` : `${endedCompetition.title} 대회가 무효 종료됐어요`,
       meta: '방금',
     } : item))
     setInvestRoomItems((currentRooms) => currentRooms.filter((item) => item.title !== endedCompetition.title))
-    appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'competition-event', eventType: 'ended', title: endedCompetition.title, detail: '중도 종료 시점의 NAV를 기준으로 최종 순위를 확정해요.', sentAt: getCurrentChatTime() })
-    setCompetitionNotice('대회가 종료됐어요. 종료 시점 NAV로 순위를 확정하고 멤버에게 알립니다.')
+    appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'competition-event', eventType: rankedStop ? 'ended' : 'invalidated', title: endedCompetition.title, detail: rankedStop ? '중도 종료 시점의 NAV를 기준으로 최종 순위를 확정해요.' : '시작 후 7일 전에 종료되어 무효이며 최종 순위가 없습니다.', sentAt: getCurrentChatTime() })
+    setCompetitionNotice(rankedStop ? '대회가 즉시 종료됐어요. NAV 순위를 확정하고 음소거와 관계없이 알립니다.' : '대회가 즉시 무효 종료됐어요. 순위는 만들지 않고 모든 멤버에게 알립니다.')
   }
 
   const participateRoomCompetition = () => {
     const room = chatRoomItems.find((item) => item.id === activeRoomId)
     if (!room?.competition || room.competition.phase !== 'active' || room.competitionMembership !== 'eligible' || !isCompetitionJoinOpen(room.competition)) return
+    const joinedCompetition: LoungeCompetition = { ...room.competition, participantCount: room.competition.participantCount + 1 }
     setChatRoomItems((currentRooms) => currentRooms.map((item) => item.id === activeRoomId ? {
       ...item,
+      competition: joinedCompetition,
       competitionMembership: 'participant',
       detail: '김형진님이 대회에 참여했어요',
       meta: '방금',
     } : item))
     appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'join-event', roomKind: '대회', sentAt: getCurrentChatTime() })
-    addCompetitionHomeCard(room, room.competition, '방금 참가')
+    addCompetitionHomeCard(room, joinedCompetition, '방금 참가')
     setCompetitionNotice(`${room.competition.initialCapital.toLocaleString('ko-KR')}원의 초기자본으로 대회에 참여했어요.`)
   }
 
-  const forfeitRoomCompetition = (room: ChatRoom) => {
+  const forfeitRoomCompetition = (room: ChatRoom, successorName?: string) => {
     if (!room.competition || room.competitionMembership !== 'participant') return
+    if (room.isHost && !successorName) return
     setChatRoomItems((currentRooms) => currentRooms.map((item) => item.id === room.id ? {
       ...item,
+      isHost: room.isHost ? false : item.isHost,
       competitionMembership: 'forfeited',
       detail: '대회를 포기하고 관망 중이에요',
       meta: '방금',
     } : item))
     setInvestRoomItems((currentRooms) => currentRooms.filter((item) => item.title !== room.competition?.title))
-    appendRoomTimeline(room.id, { id: crypto.randomUUID(), kind: 'competition-event', eventType: 'forfeited', title: room.competition.title, detail: '김형진님이 대회를 포기하고 관망으로 전환했어요. 최종 기록은 완주자보다 아래에 표시됩니다.', sentAt: getCurrentChatTime() })
-    setCompetitionNotice('대회를 포기했어요. 라운지에는 관망자로 남습니다.')
+    if (successorName) appendRoomTimeline(room.id, { id: crypto.randomUUID(), kind: 'competition-event', eventType: 'host-transferred', title: room.title, detail: `김형진님이 ${successorName}님에게 방장을 위임했어요.`, sentAt: getCurrentChatTime() })
+    appendRoomTimeline(room.id, { id: crypto.randomUUID(), kind: 'competition-event', eventType: 'forfeited', title: room.competition.title, detail: '김형진님이 대회를 포기하고 관망으로 전환했어요. 모든 포기자는 공동 꼴등입니다.', sentAt: getCurrentChatTime() })
+    setCompetitionNotice(successorName ? `${successorName}님에게 방장을 넘기고 대회를 포기했어요.` : '대회를 포기했어요. 모든 포기자와 공동 꼴등으로 라운지에 남습니다.')
   }
 
   const activeRoom = chatRoomItems.find((room) => room.id === activeRoomId) ?? chatRoomItems[0]
