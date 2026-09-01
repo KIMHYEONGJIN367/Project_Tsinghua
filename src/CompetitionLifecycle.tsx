@@ -18,15 +18,16 @@ export type LoungeCompetition = {
   taxBps: 0
   participantCount: number
   participantLimit: 10
+  mulliganLimit: 0 | 1 | 2 | 3
 }
 
 export type CompetitionDraft = {
-  title: string
   initialCapital: number
-  durationDays: number
-  startMode: 'immediate' | 'scheduled'
-  scheduledDate: string
+  startDate: string
+  endDate: string
+  startImmediately: boolean
   shortAllowed: boolean
+  mulliganLimit: 0 | 1 | 2 | 3
 }
 
 const MIN_INITIAL_CAPITAL = 1_000_000
@@ -34,7 +35,6 @@ const MAX_INITIAL_CAPITAL = 1_000_000_000_000
 const MIN_DURATION_DAYS = 7
 const MAX_DURATION_DAYS = 365 * 3
 export const MAX_COMPETITION_PARTICIPANTS = 10
-export const MAX_COMPETITION_TITLE_LENGTH = 10
 
 function getKstParts(now: Date) {
   const values = new Intl.DateTimeFormat('en-CA', {
@@ -94,36 +94,37 @@ export function formatCompetitionBoundary(date: string) {
   return `${formatCompetitionDate(date)} 00:00 KST`
 }
 
-export function limitCompetitionTitle(value: string) {
-  return Array.from(value).slice(0, MAX_COMPETITION_TITLE_LENGTH).join('')
-}
-
 export function getCompetitionRemainingDays(endDate: string, now = new Date()) {
   const today = getKstParts(now).date
   return Math.max(0, Math.round((parseDate(endDate).getTime() - parseDate(today).getTime()) / 86_400_000))
 }
 
-export function createCompetitionFromDraft(draft: CompetitionDraft, now = new Date()): LoungeCompetition {
+export function getCompetitionDurationDays(startDate: string, endDate: string) {
+  return Math.round((parseDate(endDate).getTime() - parseDate(startDate).getTime()) / 86_400_000) + 1
+}
+
+export function createCompetitionFromDraft(loungeTitle: string, draft: CompetitionDraft, now = new Date()): LoungeCompetition {
   const current = getKstParts(now)
   const currentMinutes = current.hour * 60 + current.minute
   const marketCloseMinutes = 15 * 60 + 30
-  let startDate = draft.startMode === 'scheduled' ? draft.scheduledDate : current.date
+  const requestedDurationDays = getCompetitionDurationDays(draft.startDate, draft.endDate)
+  let startDate = draft.startImmediately ? current.date : draft.startDate
 
-  if (startDate <= current.date) {
+  if (draft.startImmediately && startDate <= current.date) {
     if (isWeekend(current.date) || currentMinutes >= marketCloseMinutes) startDate = getNextWeekday(current.date)
     else startDate = current.date
   }
 
-  const startsToday = startDate === current.date && !isWeekend(startDate)
-  const phase: CompetitionPhase = draft.startMode === 'immediate' && startsToday ? 'active' : 'scheduled'
-  const endDate = addCalendarDays(startDate, draft.durationDays - 1)
+  const startsToday = startDate === current.date && !isWeekend(startDate) && currentMinutes < marketCloseMinutes
+  const phase: CompetitionPhase = startsToday ? 'active' : 'scheduled'
+  const endDate = draft.startImmediately ? addCalendarDays(startDate, requestedDurationDays - 1) : draft.endDate
 
   return {
     id: crypto.randomUUID(),
-    title: draft.title.trim(),
+    title: loungeTitle,
     phase,
     initialCapital: draft.initialCapital,
-    durationDays: draft.durationDays,
+    durationDays: requestedDurationDays,
     startDate,
     endDate,
     joinDeadline: addCalendarDays(endDate, -7),
@@ -133,6 +134,7 @@ export function createCompetitionFromDraft(draft: CompetitionDraft, now = new Da
     taxBps: 0,
     participantCount: 1,
     participantLimit: MAX_COMPETITION_PARTICIPANTS,
+    mulliganLimit: draft.mulliganLimit,
   }
 }
 
@@ -167,6 +169,7 @@ function CompetitionRuleSummary({ competition }: { competition: LoungeCompetitio
       <div><dt>기간</dt><dd>{formatCompetitionDate(competition.startDate)} – {formatCompetitionDate(competition.endDate)}</dd></div>
       <div><dt>참가 마감</dt><dd>{formatCompetitionBoundary(competition.joinDeadline)}</dd></div>
       <div><dt>참가 정원</dt><dd>{competition.participantCount}/{competition.participantLimit}명 · 방장 포함</dd></div>
+      <div><dt>멀리건</dt><dd>{competition.mulliganLimit === 0 ? '사용 안 함' : `참가자당 ${competition.mulliganLimit}회`}</dd></div>
       <div><dt>거래시장</dt><dd>{competition.market}</dd></div>
       <div><dt>공매도</dt><dd>{competition.shortAllowed ? '허용' : '미허용'}</dd></div>
       <div><dt>비용</dt><dd>매도·공매도 0.20% · 세금 없음</dd></div>
@@ -195,26 +198,45 @@ export function CompetitionHostSheet({ loungeTitle, competition, onClose, onCrea
   onStop: () => void
 }) {
   const today = getKstParts(new Date()).date
-  const firstReservableDate = addCalendarDays(today, 1)
   const [isCreatingNext, setIsCreatingNext] = useState(false)
-  const [title, setTitle] = useState(limitCompetitionTitle(`${loungeTitle} 대회`))
   const [initialCapital, setInitialCapital] = useState(10_000_000)
-  const [durationDays, setDurationDays] = useState(30)
-  const [startMode, setStartMode] = useState<'immediate' | 'scheduled'>('immediate')
-  const [scheduledDate, setScheduledDate] = useState(firstReservableDate)
+  const [startDate, setStartDate] = useState(today)
+  const [endDate, setEndDate] = useState(addCalendarDays(today, 29))
+  const [startImmediately, setStartImmediately] = useState(true)
   const [shortAllowed, setShortAllowed] = useState(true)
+  const [mulliganLimit, setMulliganLimit] = useState<0 | 1 | 2 | 3>(0)
   const [submitError, setSubmitError] = useState('')
   const shouldShowForm = !competition || ((competition.phase === 'ended' || competition.phase === 'invalidated') && isCreatingNext)
   const rankedStop = competition ? hasCompetitionReachedRankedDuration(competition) : false
-  const titleLength = Array.from(title).length
+  const durationDays = getCompetitionDurationDays(startDate, endDate)
+  const minimumEndDate = addCalendarDays(startDate, MIN_DURATION_DAYS - 1)
+  const maximumEndDate = addCalendarDays(startDate, MAX_DURATION_DAYS - 1)
+
+  const adjustInitialCapital = (delta: number) => {
+    setInitialCapital((current) => Math.min(MAX_INITIAL_CAPITAL, Math.max(MIN_INITIAL_CAPITAL, current + delta)))
+    setSubmitError('')
+  }
+
+  const chooseStartDate = (nextStartDate: string) => {
+    if (!nextStartDate) return
+    const preservedDuration = Math.min(MAX_DURATION_DAYS, Math.max(MIN_DURATION_DAYS, durationDays))
+    setStartDate(nextStartDate)
+    setEndDate(addCalendarDays(nextStartDate, preservedDuration - 1))
+    setStartImmediately(nextStartDate === today)
+    setSubmitError('')
+  }
+
+  const chooseImmediateStart = () => {
+    chooseStartDate(today)
+    setStartImmediately(true)
+  }
 
   const submitCompetition = () => {
-    if (!title.trim()) return setSubmitError('대회 이름을 입력해 주세요.')
-    if (titleLength > MAX_COMPETITION_TITLE_LENGTH) return setSubmitError('대회 이름은 10자 이내로 입력해 주세요.')
+    if (!startDate || !endDate) return setSubmitError('시작일과 종료일을 선택해 주세요.')
     if (initialCapital < MIN_INITIAL_CAPITAL || initialCapital > MAX_INITIAL_CAPITAL) return setSubmitError('초기자본은 100만원부터 1조원까지 설정할 수 있어요.')
     if (durationDays < MIN_DURATION_DAYS || durationDays > MAX_DURATION_DAYS) return setSubmitError('기간은 7일부터 3년까지 설정할 수 있어요.')
-    if (startMode === 'scheduled' && scheduledDate <= today) return setSubmitError('내일 이후의 예약일을 선택해 주세요.')
-    onCreate({ title, initialCapital, durationDays, startMode, scheduledDate, shortAllowed })
+    if (startDate < today) return setSubmitError('오늘 이후의 시작일을 선택해 주세요.')
+    onCreate({ initialCapital, startDate, endDate, startImmediately, shortAllowed, mulliganLimit })
   }
 
   if (!shouldShowForm && competition) {
@@ -244,7 +266,7 @@ export function CompetitionHostSheet({ loungeTitle, competition, onClose, onCrea
         <footer className="competition-lifecycle-footer">
           {competition.phase === 'scheduled' && <button type="button" className="is-danger" onClick={onCancelSchedule}>예약 취소</button>}
           {competition.phase === 'active' && <button type="button" className="is-danger" onClick={onStop}>{rankedStop ? '현재 NAV로 즉시 종료' : '순위 없이 무효 종료'}</button>}
-          {(competition.phase === 'ended' || competition.phase === 'invalidated') && <button type="button" className="is-primary" onClick={() => setIsCreatingNext(true)}>다음 대회 설정</button>}
+          {(competition.phase === 'ended' || competition.phase === 'invalidated') && <button type="button" className="is-primary" onClick={() => setIsCreatingNext(true)}>바로 다음 대회 열기</button>}
         </footer>
       </LifecycleSheet>
     )
@@ -258,36 +280,43 @@ export function CompetitionHostSheet({ loungeTitle, competition, onClose, onCrea
       </header>
       <div className="competition-lifecycle-scroll">
         <section className="competition-manage-hero">
-          <span>{loungeTitle}</span>
+          <span>대회 이름 · 라운지 설정에서 관리</span>
           <h2>라운지 안에서 새 대회를 열어요</h2>
-          <p>한 번 확정한 규칙은 종료 전까지 바꿀 수 없습니다.</p>
+          <p><strong>{loungeTitle}</strong> 이름으로 열리며, 한 번 확정한 규칙은 종료 전까지 바꿀 수 없습니다.</p>
         </section>
 
-        <label className="competition-form-field">
-          <span><strong>대회 이름</strong><small>{titleLength}/10</small></span>
-          <input value={title} maxLength={20} onChange={(event) => { setTitle(limitCompetitionTitle(event.target.value)); setSubmitError('') }} />
-        </label>
-
-        <label className="competition-form-field">
+        <section className="competition-form-field">
           <span><strong>초기자본</strong><small>100만원 – 1조원</small></span>
-          <div className="competition-money-input"><input type="number" min={MIN_INITIAL_CAPITAL} max={MAX_INITIAL_CAPITAL} step={1_000_000} value={initialCapital} onChange={(event) => { setInitialCapital(Number(event.target.value)); setSubmitError('') }} /><b>원</b></div>
-        </label>
+          <div className="competition-money-stepper">
+            <button type="button" aria-label="초기자본 100만원 줄이기" onClick={() => adjustInitialCapital(-1_000_000)}>−</button>
+            <label className="competition-money-input"><input aria-label="초기자본 직접 입력" type="text" inputMode="numeric" value={initialCapital.toLocaleString('ko-KR')} onChange={(event) => { setInitialCapital(Number(event.target.value.replace(/[^0-9]/g, '')) || 0); setSubmitError('') }} /><b>원</b></label>
+            <button type="button" aria-label="초기자본 100만원 늘리기" onClick={() => adjustInitialCapital(1_000_000)}>＋</button>
+          </div>
+        </section>
         <div className="competition-capital-presets">
-          {[1_000_000, 10_000_000, 100_000_000, 1_000_000_000].map((amount) => <button type="button" className={initialCapital === amount ? 'is-selected' : ''} onClick={() => setInitialCapital(amount)} key={amount}>{amount >= 100_000_000 ? `${amount / 100_000_000}억` : `${amount / 10_000}만`}</button>)}
+          {[
+            { amount: 10_000_000, label: '1천만' },
+            { amount: 100_000_000, label: '1억' },
+            { amount: 1_000_000_000, label: '10억' },
+            { amount: 10_000_000_000, label: '100억' },
+          ].map(({ amount, label }) => <button type="button" className={initialCapital === amount ? 'is-selected' : ''} onClick={() => { setInitialCapital(amount); setSubmitError('') }} key={amount}>{label}</button>)}
         </div>
 
-        <label className="competition-form-field">
-          <span><strong>대회 기간</strong><small>7일 – 3년</small></span>
-          <div className="competition-money-input"><input type="number" min={MIN_DURATION_DAYS} max={MAX_DURATION_DAYS} value={durationDays} onChange={(event) => { setDurationDays(Number(event.target.value)); setSubmitError('') }} /><b>일</b></div>
-        </label>
-
         <fieldset className="competition-form-field">
-          <legend><strong>시작</strong><small>KST 00:00 기준</small></legend>
-          <div className="competition-start-options">
-            <button type="button" className={startMode === 'immediate' ? 'is-selected' : ''} onClick={() => setStartMode('immediate')}><strong>가능한 즉시</strong><small>장전·장중은 오늘, 장후는 다음 거래일</small></button>
-            <button type="button" className={startMode === 'scheduled' ? 'is-selected' : ''} onClick={() => setStartMode('scheduled')}><strong>날짜 예약</strong><small>선택일 00:00 시작</small></button>
+          <legend><strong>대회 일정</strong><small>시작일·종료일 포함 · KST 00:00</small></legend>
+          <div className="competition-date-range">
+            <label className="competition-date-card">
+              <span><strong>시작일</strong><small>{startImmediately ? '가능한 즉시' : '선택일 예약'}</small></span>
+              <input type="date" min={today} value={startDate} onChange={(event) => chooseStartDate(event.target.value)} />
+              <button type="button" className={startImmediately ? 'is-selected' : ''} onClick={chooseImmediateStart}>가능한 즉시</button>
+            </label>
+            <span className="competition-date-arrow" aria-hidden="true">→</span>
+            <label className="competition-date-card">
+              <span><strong>종료일</strong><small>최소 7일</small></span>
+              <input type="date" min={minimumEndDate} max={maximumEndDate} value={endDate} onChange={(event) => { setEndDate(event.target.value); setSubmitError('') }} />
+            </label>
           </div>
-          {startMode === 'scheduled' && <input className="competition-date-input" type="date" min={firstReservableDate} value={scheduledDate} onChange={(event) => setScheduledDate(event.target.value)} />}
+          <div className="competition-duration-readout"><strong>총 {durationDays.toLocaleString('ko-KR')}일</strong><span>{formatCompetitionDate(startDate)}부터 {formatCompetitionDate(endDate)}까지</span></div>
         </fieldset>
 
         <section className="competition-fixed-market">
@@ -308,10 +337,23 @@ export function CompetitionHostSheet({ loungeTitle, competition, onClose, onCrea
           <i aria-hidden="true" />
         </label>
 
+        <fieldset className="competition-form-field">
+          <legend><strong>멀리건</strong><small>참가자별 계좌 리셋 횟수</small></legend>
+          <div className="competition-mulligan-options" role="radiogroup" aria-label="멀리건 허용 횟수">
+            {([0, 1, 2, 3] as const).map((count) => (
+              <button type="button" role="radio" aria-checked={mulliganLimit === count} className={mulliganLimit === count ? 'is-selected' : ''} onClick={() => setMulliganLimit(count)} key={count}>
+                <strong>{count === 0 ? '없음' : `${count}회`}</strong>
+                <small>{count === 0 ? '리셋 불가' : count === 1 ? '한 번 다시' : `${count}번 다시`}</small>
+              </button>
+            ))}
+          </div>
+          <p className="competition-mulligan-help">사용하면 미체결과 보유 포지션을 정리하고 초기자본·손익 0원으로 다시 시작해요.</p>
+        </fieldset>
+
         <section className="competition-lock-note"><strong>규칙은 대회가 끝날 때까지 잠겨요</strong><span>예약 상태에서도 수정할 수 없고 취소 후 다시 설정해야 합니다.</span></section>
         {submitError && <p className="competition-form-error" role="alert">{submitError}</p>}
       </div>
-      <footer className="competition-lifecycle-footer"><button type="button" className="is-primary" onClick={submitCompetition}>규칙 확정하고 {startMode === 'scheduled' ? '예약' : '주최'}</button></footer>
+      <footer className="competition-lifecycle-footer"><button type="button" className="is-primary" onClick={submitCompetition}>규칙 확정하고 {startImmediately ? '주최' : '예약'}</button></footer>
     </LifecycleSheet>
   )
 }

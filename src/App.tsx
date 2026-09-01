@@ -101,6 +101,7 @@ type CompetitionInvite = {
   market: string
   shortAllowed: boolean
   initialCapital: number
+  mulliganLimit?: 0 | 1 | 2 | 3
   competitionParticipantCount?: number
   image: string
   recentHistory: ChatHistoryItem[]
@@ -239,6 +240,8 @@ type ChatRoom = {
   competitionState?: ChatCompetitionState
   competition?: LoungeCompetition
   competitionMembership?: CompetitionMembership
+  mulligansUsed?: number
+  accountReset?: boolean
   recentHistory?: ChatHistoryItem[]
   image: string
 }
@@ -272,7 +275,9 @@ const chatRooms: ChatRoom[] = [
       taxBps: 0,
       participantCount: 4,
       participantLimit: 10,
+      mulliganLimit: 2,
     },
+    mulligansUsed: 0,
     image: investRoom,
   },
   { id: 'kakao', title: '카카오 투자 라운지', detail: '진짜 발표 전까지 떡상하려나요?', meta: '오후 8:12', count: '15', unread: 15, muted: true, pinned: false, kind: 'group', isHost: true, competitionState: 'chat-only', competitionMembership: 'none', image: friendsRoom },
@@ -291,6 +296,7 @@ const competitionInvites: CompetitionInvite[] = [
     market: 'KOSPI · KOSDAQ',
     shortAllowed: true,
     initialCapital: 10_000_000,
+    mulliganLimit: 1,
     competitionParticipantCount: 8,
     image: investRoom,
     recentHistory: [
@@ -307,6 +313,7 @@ const competitionInvites: CompetitionInvite[] = [
     market: 'KOSPI · KOSDAQ',
     shortAllowed: false,
     initialCapital: 10_000_000,
+    mulliganLimit: 0,
     image: friendsRoom,
     recentHistory: [
       { id: 'lounge-history-1', sender: '김영규', text: '이번 주 관심 종목 하나씩 공유해볼까요?', sentOn: '8월 28일', sentAt: '오후 8:11' },
@@ -1187,6 +1194,7 @@ function ChatRoomScreen({
   onCancelCompetitionSchedule,
   onStopCompetition,
   onParticipateCompetition,
+  onUseMulligan,
   competitionNotice,
 }: {
   onNavigate: (screen: ScreenKey) => void
@@ -1203,6 +1211,7 @@ function ChatRoomScreen({
   onCancelCompetitionSchedule: () => void
   onStopCompetition: () => void
   onParticipateCompetition: () => void
+  onUseMulligan: () => void
   competitionNotice: string
 }) {
   const [messageDraft, setMessageDraft] = useState('')
@@ -1212,6 +1221,7 @@ function ChatRoomScreen({
   const [isRankingSheetOpen, setIsRankingSheetOpen] = useState(false)
   const [isCompetitionHostSheetOpen, setIsCompetitionHostSheetOpen] = useState(false)
   const [isCompetitionParticipationSheetOpen, setIsCompetitionParticipationSheetOpen] = useState(false)
+  const [isMulliganConfirmOpen, setIsMulliganConfirmOpen] = useState(false)
   const [isTradeSheetDragging, setIsTradeSheetDragging] = useState(false)
   const [isTradeSheetDismissing, setIsTradeSheetDismissing] = useState(false)
   const [tradeSheetDragY, setTradeSheetDragY] = useState(0)
@@ -1228,7 +1238,10 @@ function ChatRoomScreen({
   const competitionAtCapacity = Boolean(room.competition && isCompetitionAtCapacity(room.competition))
   const canJoinCompetition = Boolean(room.competition && room.competitionMembership === 'eligible' && isCompetitionJoinOpen(room.competition))
   const joinClosedLabel = competitionAtCapacity ? '대회 참가 정원 마감' : '대회 참가 마감'
-  const usesExistingPortfolioMock = room.competition?.id === 'competition-ssangddi'
+  const mulligansUsed = room.mulligansUsed ?? 0
+  const mulligansRemaining = Math.max(0, (room.competition?.mulliganLimit ?? 0) - mulligansUsed)
+  const hasMulliganRule = (room.competition?.mulliganLimit ?? 0) > 0
+  const usesExistingPortfolioMock = room.competition?.id === 'competition-ssangddi' && !room.accountReset
   const competitionAsset = usesExistingPortfolioMock ? TOTAL_ASSET : room.competition?.initialCapital ?? TOTAL_ASSET
   const competitionReturn = usesExistingPortfolioMock ? TOTAL_RETURN : 0
   const competitionRemainingDays = room.competition ? getCompetitionRemainingDays(room.competition.endDate) : 0
@@ -1445,7 +1458,8 @@ function ChatRoomScreen({
             </div>
             <div className="chat-account-hud-footer">
               <span className="chat-account-deadline"><b>{competitionRemainingDays === 0 ? 'D-DAY' : `D-${competitionRemainingDays}`}</b><span>{competitionEndLabel} 종료</span></span>
-              <div>
+              <div className={hasMulliganRule ? 'has-mulligan' : ''}>
+                {hasMulliganRule && <button type="button" className="chat-mulligan-button" disabled={mulligansRemaining === 0} onClick={() => setIsMulliganConfirmOpen(true)}>멀리건 {mulligansRemaining}</button>}
                 <button type="button" onClick={openRankingSheet}>순위</button>
                 <button type="button" onClick={openPortfolioSheet}>잔고</button>
               </div>
@@ -1701,14 +1715,14 @@ function ChatRoomScreen({
                 <div className="trade-sheet-grabber" aria-hidden="true" />
               </div>
               <div className="trade-sheet-canvas">
-                <TradeDrafts shortAllowed={room.competition?.shortAllowed ?? false} tradeEntryIntent={tradeEntryIntent} onOpenPortfolio={openPortfolioSheet} openOrders={openOrders} onUpdateOpenOrder={onUpdateOpenOrder} onCancelOpenOrder={onCancelOpenOrder} />
+                <TradeDrafts positionsReset={Boolean(room.accountReset)} shortAllowed={room.competition?.shortAllowed ?? false} tradeEntryIntent={tradeEntryIntent} onOpenPortfolio={openPortfolioSheet} openOrders={openOrders} onUpdateOpenOrder={onUpdateOpenOrder} onCancelOpenOrder={onCancelOpenOrder} />
               </div>
             </div>
           </section>
         </div>
       )}
       {isPortfolioSheetOpen && (
-        <PortfolioSheet viewCount={viewCounts.balance} openOrders={openOrders} onClose={() => setIsPortfolioSheetOpen(false)} onShare={sharePortfolio} onOpenPosition={openPositionTradeFromPortfolio} onOpenOrder={openOrderManagerFromPortfolio} />
+        <PortfolioSheet isReset={Boolean(room.accountReset)} initialCapital={room.competition?.initialCapital} viewCount={viewCounts.balance} openOrders={openOrders} onClose={() => setIsPortfolioSheetOpen(false)} onShare={sharePortfolio} onOpenPosition={openPositionTradeFromPortfolio} onOpenOrder={openOrderManagerFromPortfolio} />
       )}
       {isRankingSheetOpen && (
         <RankingSheet viewCount={viewCounts.ranking} onClose={() => setIsRankingSheetOpen(false)} />
@@ -1741,6 +1755,23 @@ function ChatRoomScreen({
             setIsCompetitionParticipationSheetOpen(false)
           }}
         />
+      )}
+      {isMulliganConfirmOpen && room.competition && (
+        <div className="competition-mulligan-layer">
+          <button type="button" className="competition-mulligan-backdrop" aria-label="멀리건 사용 취소" onClick={() => setIsMulliganConfirmOpen(false)} />
+          <section className="competition-mulligan-dialog" role="alertdialog" aria-modal="true" aria-labelledby="mulligan-dialog-title">
+            <span className="competition-mulligan-mark" aria-hidden="true">↺</span>
+            <small>남은 멀리건 {mulligansRemaining}회</small>
+            <h2 id="mulligan-dialog-title">내 계좌를 처음부터 다시 시작할까요?</h2>
+            <ul>
+              <li>미체결 주문을 모두 취소해요</li>
+              <li>Long·Short 보유 포지션을 모두 정리해요</li>
+              <li>총자산 {formatWon(room.competition.initialCapital)} · 손익 0원 · 수익률 0.0%</li>
+            </ul>
+            <p>사용한 횟수는 되돌릴 수 없고 과거 거래 기록은 남아요.</p>
+            <div><button type="button" onClick={() => setIsMulliganConfirmOpen(false)}>아니요</button><button type="button" onClick={() => { onUseMulligan(); setIsMulliganConfirmOpen(false); setIsPortfolioSheetOpen(false); closeTradeSheet() }}>멀리건 사용</button></div>
+          </section>
+        </div>
       )}
     </main>
   )
@@ -2011,6 +2042,7 @@ function CompetitionJoinScreen({ initialCode, onBack, onJoin }: {
                 <div><dt>현재 현황</dt><dd>{preview.competitionState === 'active' ? '대회 진행 중' : '채팅 라운지'}</dd></div>
                 {preview.competitionState === 'active' && preview.startDate && preview.endDate && <div><dt>대회 기간</dt><dd>{formatCompetitionDate(preview.startDate)} – {formatCompetitionDate(preview.endDate)}</dd></div>}
                 {preview.competitionState === 'active' && <div><dt>대회 참가</dt><dd>{preview.competitionParticipantCount ?? 1}/{MAX_COMPETITION_PARTICIPANTS}명</dd></div>}
+                {preview.competitionState === 'active' && <div><dt>멀리건</dt><dd>{preview.mulliganLimit ? `참가자당 ${preview.mulliganLimit}회` : '사용 안 함'}</dd></div>}
                 <div><dt>거래 가능 시장</dt><dd>{preview.market}</dd></div>
                 <div><dt>공매도</dt><dd>{preview.shortAllowed ? '허용' : '미허용'}</dd></div>
               </dl>
@@ -2620,6 +2652,7 @@ export default function App() {
         taxBps: 0,
         participantCount: Math.min(Number(getParticipantCount(feedRoom)), MAX_COMPETITION_PARTICIPANTS),
         participantLimit: 10,
+        mulliganLimit: 0,
       },
       image: feedRoom.image,
     }
@@ -2704,6 +2737,7 @@ export default function App() {
           taxBps: 0,
           participantCount: invite.competitionParticipantCount ?? 1,
           participantLimit: 10,
+          mulliganLimit: invite.mulliganLimit ?? 0,
         }
       : undefined
     const joinedRoom: ChatRoom = {
@@ -2761,7 +2795,7 @@ export default function App() {
   const createRoomCompetition = (draft: CompetitionDraft) => {
     const room = chatRoomItems.find((item) => item.id === activeRoomId)
     if (!room || !room.isHost || room.kind !== 'group') return
-    const competition = createCompetitionFromDraft(draft)
+    const competition = createCompetitionFromDraft(room.title, draft)
     const eventType = competition.phase === 'active' ? 'started' : 'scheduled'
     const detail = competition.phase === 'active'
       ? `${formatCompetitionDate(competition.endDate)}까지 진행하며 모든 날짜 경계는 00:00 KST예요.`
@@ -2772,6 +2806,8 @@ export default function App() {
       competition,
       competitionState: competition.phase,
       competitionMembership: 'participant',
+      mulligansUsed: 0,
+      accountReset: false,
       detail: competition.phase === 'active' ? `${competition.title} 대회가 시작됐어요` : `${competition.title} 대회가 예약됐어요`,
       meta: '방금',
     } : item))
@@ -2812,7 +2848,7 @@ export default function App() {
       meta: '방금',
     } : item))
     setInvestRoomItems((currentRooms) => currentRooms.filter((item) => item.title !== endedCompetition.title))
-    appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'competition-event', eventType: rankedStop ? 'ended' : 'invalidated', title: endedCompetition.title, detail: rankedStop ? '중도 종료 시점의 NAV를 기준으로 최종 순위를 확정해요.' : '시작 후 7일 전에 종료되어 무효이며 최종 순위가 없습니다.', sentAt: getCurrentChatTime() })
+    appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'competition-event', eventType: rankedStop ? 'ended' : 'invalidated', title: endedCompetition.title, detail: rankedStop ? '주최자가 대회를 중간 종료했습니다. 종료 시점의 NAV로 최종 순위를 확정해요.' : '주최자가 대회를 중간 종료했습니다. 시작 후 7일 전이라 무효이며 최종 순위가 없습니다.', sentAt: getCurrentChatTime() })
     setCompetitionNotice(rankedStop ? '대회가 즉시 종료됐어요. NAV 순위를 확정하고 음소거와 관계없이 알립니다.' : '대회가 즉시 무효 종료됐어요. 순위는 만들지 않고 모든 멤버에게 알립니다.')
   }
 
@@ -2824,12 +2860,31 @@ export default function App() {
       ...item,
       competition: joinedCompetition,
       competitionMembership: 'participant',
+      mulligansUsed: 0,
+      accountReset: false,
       detail: '김형진님이 대회에 참여했어요',
       meta: '방금',
     } : item))
     appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'join-event', roomKind: '대회', sentAt: getCurrentChatTime() })
     addCompetitionHomeCard(room, joinedCompetition, '방금 참가')
     setCompetitionNotice(`${room.competition.initialCapital.toLocaleString('ko-KR')}원의 초기자본으로 대회에 참여했어요.`)
+  }
+
+  const useRoomCompetitionMulligan = () => {
+    const room = chatRoomItems.find((item) => item.id === activeRoomId)
+    if (!room?.competition || room.competition.phase !== 'active' || room.competitionMembership !== 'participant') return
+    const usedCount = room.mulligansUsed ?? 0
+    if (usedCount >= room.competition.mulliganLimit) return
+
+    setChatRoomItems((currentRooms) => currentRooms.map((item) => item.id === activeRoomId ? {
+      ...item,
+      mulligansUsed: usedCount + 1,
+      accountReset: true,
+      detail: '멀리건으로 내 계좌를 초기화했어요',
+      meta: '방금',
+    } : item))
+    setOpenOrders([])
+    setCompetitionNotice(`멀리건을 사용했어요. 총자산 ${room.competition.initialCapital.toLocaleString('ko-KR')}원 · 손익 0원 · 수익률 0.0%로 초기화했습니다.`)
   }
 
   const forfeitRoomCompetition = (room: ChatRoom, successorName?: string) => {
@@ -2900,6 +2955,7 @@ export default function App() {
         onCancelCompetitionSchedule={cancelRoomCompetitionSchedule}
         onStopCompetition={stopRoomCompetition}
         onParticipateCompetition={participateRoomCompetition}
+        onUseMulligan={useRoomCompetitionMulligan}
         competitionNotice={competitionNotice}
       />
     )

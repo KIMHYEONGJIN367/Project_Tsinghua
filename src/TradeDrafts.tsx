@@ -73,6 +73,7 @@ function InstrumentAccess({
   onSearchFocusChange,
   onSelectInstrument,
   onOpenAllHoldings,
+  positionsReset,
 }: {
   direction: TradeDirection
   selectedInstrument: Instrument
@@ -82,12 +83,13 @@ function InstrumentAccess({
   onSearchFocusChange: (focused: boolean) => void
   onSelectInstrument: (instrument: Instrument) => void
   onOpenAllHoldings: () => void
+  positionsReset: boolean
 }) {
   const isSearchDirection = direction === 'buy' || direction === 'short'
   const eligibleInstruments = direction === 'sell'
-    ? instruments.filter((instrument) => instrument.longQuantity)
+    ? positionsReset ? [] : instruments.filter((instrument) => instrument.longQuantity)
     : direction === 'cover'
-      ? instruments.filter((instrument) => instrument.shortQuantity)
+      ? positionsReset ? [] : instruments.filter((instrument) => instrument.shortQuantity)
       : instruments
 
   const searchResults = eligibleInstruments.filter((instrument) => {
@@ -144,9 +146,10 @@ function InstrumentAccess({
     <section className="ticket-instrument-section">
       <div className="ticket-section-heading">
         <span className="ticket-section-label">{directionMeta[direction].searchLabel}</span>
-        <button type="button" className="ticket-show-all" aria-label="전체 보유 종목 보기" onClick={onOpenAllHoldings}>＋</button>
+        <button type="button" className="ticket-show-all" disabled={eligibleInstruments.length === 0} aria-label="전체 보유 종목 보기" onClick={onOpenAllHoldings}>＋</button>
       </div>
       <div className="ticket-holding-preview">
+        {eligibleInstruments.length === 0 && <p className="ticket-search-empty">멀리건 사용 후 새로 보유한 종목이 없어요.</p>}
         {eligibleInstruments.slice(0, 3).map((instrument) => {
           const quantity = direction === 'sell' ? instrument.longQuantity : instrument.shortQuantity
           return (
@@ -493,7 +496,7 @@ function QuantityControl({ quantity, maxQuantity, selectedPercent, quantityBasis
     <section className="ticket-quantity-section">
       <div className="ticket-quantity-heading"><span className="ticket-section-label">수량</span><small>{quantityBasis}</small></div>
       <div className="ticket-quantity-input">
-        <button type="button" aria-label="수량 줄이기" onClick={() => onQuantityChange(Math.max(1, quantity - 1))}>−</button>
+        <button type="button" aria-label="수량 줄이기" disabled={maxQuantity === 0} onClick={() => onQuantityChange(Math.max(1, quantity - 1))}>−</button>
         <label>
           <span className="sr-only">주문 수량</span>
           <input
@@ -503,16 +506,16 @@ function QuantityControl({ quantity, maxQuantity, selectedPercent, quantityBasis
             value={quantity.toLocaleString('ko-KR')}
             onChange={(event) => {
               const nextQuantity = Number(event.target.value.replace(/[^0-9]/g, ''))
-              if (Number.isFinite(nextQuantity)) onQuantityChange(Math.max(1, Math.min(maxQuantity, nextQuantity)))
+              if (Number.isFinite(nextQuantity)) onQuantityChange(maxQuantity === 0 ? 0 : Math.max(1, Math.min(maxQuantity, nextQuantity)))
             }}
           />
           <small>주</small>
         </label>
-        <button type="button" aria-label="수량 늘리기" onClick={() => onQuantityChange(Math.min(maxQuantity, quantity + 1))}>＋</button>
+        <button type="button" aria-label="수량 늘리기" disabled={maxQuantity === 0} onClick={() => onQuantityChange(Math.min(maxQuantity, quantity + 1))}>＋</button>
       </div>
       <div className="ticket-allocation-buttons" aria-label="주문 비중 선택">
         {[10, 25, 50, 100].map((percent) => (
-          <button type="button" className={selectedPercent === percent ? 'is-selected' : ''} aria-pressed={selectedPercent === percent} key={percent} onClick={() => onPercentSelect(percent)}>{percent === 100 ? '최대' : `${percent}%`}</button>
+          <button type="button" disabled={maxQuantity === 0} className={selectedPercent === percent ? 'is-selected' : ''} aria-pressed={selectedPercent === percent} key={percent} onClick={() => onPercentSelect(percent)}>{percent === 100 ? '최대' : `${percent}%`}</button>
         ))}
       </div>
     </section>
@@ -548,7 +551,8 @@ function HoldingsPicker({ direction, selectedInstrument, onSelect, onClose }: {
   )
 }
 
-export default function TradeDrafts({ shortAllowed = true, tradeEntryIntent, onOpenPortfolio, openOrders, onUpdateOpenOrder, onCancelOpenOrder }: {
+export default function TradeDrafts({ positionsReset = false, shortAllowed = true, tradeEntryIntent, onOpenPortfolio, openOrders, onUpdateOpenOrder, onCancelOpenOrder }: {
+  positionsReset?: boolean
   shortAllowed?: boolean
   tradeEntryIntent: TradeEntryIntent | null
   onOpenPortfolio: () => void
@@ -570,14 +574,14 @@ export default function TradeDrafts({ shortAllowed = true, tradeEntryIntent, onO
 
   const effectivePrice = orderType === 'market' ? selectedInstrument.price : limitPrice
   const maxQuantity = useMemo(() => {
-    if (direction === 'sell') return selectedInstrument.longQuantity ?? 0
-    if (direction === 'cover') return selectedInstrument.shortQuantity ?? 0
+    if (direction === 'sell') return positionsReset ? 0 : selectedInstrument.longQuantity ?? 0
+    if (direction === 'cover') return positionsReset ? 0 : selectedInstrument.shortQuantity ?? 0
     return Math.max(1, Math.floor(ORDERABLE_CASH / Math.max(1, effectivePrice)))
-  }, [direction, effectivePrice, selectedInstrument])
+  }, [direction, effectivePrice, positionsReset, selectedInstrument])
   const estimatedAmount = effectivePrice * quantity
 
   useEffect(() => {
-    setQuantity((currentQuantity) => Math.max(1, Math.min(maxQuantity, currentQuantity)))
+    setQuantity((currentQuantity) => maxQuantity === 0 ? 0 : Math.max(1, Math.min(maxQuantity, currentQuantity)))
   }, [maxQuantity])
 
   useEffect(() => {
@@ -645,20 +649,20 @@ export default function TradeDrafts({ shortAllowed = true, tradeEntryIntent, onO
   }
 
   const changeQuantity = (nextQuantity: number) => {
-    setQuantity(Math.max(1, Math.min(maxQuantity, nextQuantity)))
+    setQuantity(maxQuantity === 0 ? 0 : Math.max(1, Math.min(maxQuantity, nextQuantity)))
     setSelectedPercent(null)
   }
 
   const selectPercent = (percent: number) => {
     setSelectedPercent(percent)
-    setQuantity(Math.max(1, Math.floor(maxQuantity * percent / 100)))
+    setQuantity(maxQuantity === 0 ? 0 : Math.max(1, Math.floor(maxQuantity * percent / 100)))
   }
 
   return (
     <div className="ticket-prototypes">
       <div className="ticket-scroll-area">
         <DirectionTabs direction={direction} onChange={selectDirection} shortAllowed={shortAllowed} />
-        <InstrumentAccess direction={direction} selectedInstrument={selectedInstrument} searchQuery={searchQuery} searchFocused={searchFocused} onSearchQueryChange={setSearchQuery} onSearchFocusChange={setSearchFocused} onSelectInstrument={selectInstrument} onOpenAllHoldings={() => setIsHoldingsPickerOpen(true)} />
+        <InstrumentAccess positionsReset={positionsReset} direction={direction} selectedInstrument={selectedInstrument} searchQuery={searchQuery} searchFocused={searchFocused} onSearchQueryChange={setSearchQuery} onSearchFocusChange={setSearchFocused} onSelectInstrument={selectInstrument} onOpenAllHoldings={() => setIsHoldingsPickerOpen(true)} />
         <div className="ticket-prototype-stack">
           <QuoteAndCapacity direction={direction} instrument={selectedInstrument} maxQuantity={maxQuantity} />
           <OrderTypeAndPrice orderType={orderType} currentPrice={selectedInstrument.price} limitPrice={limitPrice} onOrderTypeChange={setOrderType} onLimitPriceChange={setLimitPrice} />
@@ -681,7 +685,7 @@ export default function TradeDrafts({ shortAllowed = true, tradeEntryIntent, onO
           >
             미체결 <span>{openOrders.length}</span>
           </button>
-          <button type="button" className="ticket-primary-action">{directionMeta[direction].tabLabel}</button>
+          <button type="button" className="ticket-primary-action" disabled={maxQuantity === 0}>{directionMeta[direction].tabLabel}</button>
         </div>
       </footer>
       {isHoldingsPickerOpen && <HoldingsPicker direction={direction} selectedInstrument={selectedInstrument} onSelect={selectInstrument} onClose={() => setIsHoldingsPickerOpen(false)} />}

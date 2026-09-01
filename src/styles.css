@@ -4758,6 +4758,12 @@ body:has(.splash-shell) {
   gap: 6px;
 }
 
+.chat-account-hud-footer > div.has-mulligan {
+  width: 188px;
+  grid-template-columns: 1.25fr repeat(2, minmax(0, 1fr));
+  gap: 4px;
+}
+
 .chat-account-hud-footer button {
   height: 30px;
   padding: 0;
@@ -4773,6 +4779,18 @@ body:has(.splash-shell) {
   background: rgba(255, 255, 255, 0.11);
   color: #ffffff;
   box-shadow: none;
+}
+
+.chat-account-hud-footer .chat-mulligan-button {
+  border-color: rgba(255, 239, 183, 0.5);
+  background: rgba(255, 232, 158, 0.18);
+  color: #fff4c7;
+}
+
+.chat-account-hud-footer .chat-mulligan-button:disabled {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .chat-view-presence {
@@ -7370,6 +7388,11 @@ body:has(.utility-shell) {
   line-height: 1.5;
 }
 
+.competition-manage-hero p strong {
+  color: #5d4e49;
+  font-weight: 750;
+}
+
 .competition-rule-summary {
   margin: 0;
   padding: 2px 14px;
@@ -7485,6 +7508,25 @@ body:has(.utility-shell) {
   font-size: 9px;
 }
 
+.competition-money-stepper {
+  display: grid;
+  grid-template-columns: 43px minmax(0, 1fr) 43px;
+  gap: 7px;
+}
+
+.competition-money-stepper > button {
+  border: 1px solid #e2d9d5;
+  border-radius: 12px;
+  background: #fff;
+  color: #8e2932;
+  font-size: 18px;
+  font-weight: 500;
+}
+
+.competition-money-stepper > button:active {
+  background: #fff3f1;
+}
+
 .competition-capital-presets {
   display: grid;
   margin: -10px 0 18px;
@@ -7552,6 +7594,141 @@ body:has(.utility-shell) {
 
 .competition-date-input {
   margin-top: 8px;
+}
+
+.competition-date-range {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18px minmax(0, 1fr);
+  align-items: center;
+  gap: 5px;
+}
+
+.competition-date-card {
+  display: flex;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #e5dcd8;
+  border-radius: 13px;
+  background: #fff;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.competition-date-card > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.competition-date-card > span strong {
+  font-size: 9px;
+}
+
+.competition-date-card > span small {
+  color: #9b8e88;
+  font-size: 7px;
+}
+
+.competition-date-card input {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 5px;
+  border: 1px solid #eee5e1;
+  border-radius: 8px;
+  background: #fbf9f8;
+  color: #413734;
+  font-size: 8px;
+  outline: none;
+}
+
+.competition-date-card > button {
+  min-height: 28px;
+  border: 1px solid #e5dcd8;
+  border-radius: 8px;
+  background: #fff;
+  color: #756965;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.competition-date-card > button.is-selected {
+  border-color: #a82d37;
+  background: #fff3f1;
+  color: #982631;
+}
+
+.competition-date-arrow {
+  color: #b2a6a1;
+  font-size: 13px;
+  text-align: center;
+}
+
+.competition-duration-readout {
+  display: flex;
+  min-height: 34px;
+  margin-top: 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: #f4efec;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.competition-duration-readout strong {
+  color: #9a2932;
+  font-size: 9px;
+}
+
+.competition-duration-readout span {
+  overflow: hidden;
+  color: #887b75;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.competition-mulligan-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.competition-mulligan-options button {
+  display: flex;
+  min-height: 48px;
+  padding: 7px 4px;
+  border: 1px solid #e5dcd8;
+  border-radius: 10px;
+  background: #fff;
+  color: #756965;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.competition-mulligan-options button strong {
+  font-size: 9px;
+}
+
+.competition-mulligan-options button small {
+  font-size: 7px;
+}
+
+.competition-mulligan-options button.is-selected {
+  border-color: #a82d37;
+  background: #fff3f1;
+  color: #982631;
+}
+
+.competition-mulligan-help {
+  margin: 7px 1px 0;
+  color: #948781;
+  font-size: 8px;
+  line-height: 1.45;
 }
 
 .competition-fixed-market {
@@ -7704,6 +7881,104 @@ body:has(.utility-shell) {
   background: #e8e2df;
   box-shadow: none;
   color: #a29894;
+}
+
+.competition-mulligan-layer {
+  position: absolute;
+  z-index: 95;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+}
+
+.competition-mulligan-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(30, 23, 22, 0.56);
+  backdrop-filter: blur(3px);
+}
+
+.competition-mulligan-dialog {
+  position: relative;
+  display: flex;
+  width: 100%;
+  padding: 22px 18px 16px;
+  border-radius: 20px;
+  background: #fffdfb;
+  box-shadow: 0 18px 52px rgba(34, 23, 21, 0.28);
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.competition-mulligan-mark {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  margin-bottom: 8px;
+  border-radius: 50%;
+  background: #f3dfdc;
+  color: #a52c36;
+  place-items: center;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.competition-mulligan-dialog > small {
+  color: #a52c36;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.competition-mulligan-dialog h2 {
+  max-width: 250px;
+  margin: 7px 0 12px;
+  color: #2f2826;
+  font-size: 17px;
+  line-height: 1.28;
+}
+
+.competition-mulligan-dialog ul {
+  width: 100%;
+  margin: 0;
+  padding: 10px 13px 10px 28px;
+  border-radius: 12px;
+  background: #f7f2ef;
+  color: #5f5350;
+  font-size: 9px;
+  line-height: 1.8;
+  text-align: left;
+}
+
+.competition-mulligan-dialog > p {
+  margin: 10px 0 14px;
+  color: #958984;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.competition-mulligan-dialog > div {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 8px;
+}
+
+.competition-mulligan-dialog > div button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 11px;
+  background: #eee8e5;
+  color: #6f625e;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.competition-mulligan-dialog > div button:last-child {
+  background: #a52c36;
+  color: #fff;
 }
 
 @media (max-height: 760px) {

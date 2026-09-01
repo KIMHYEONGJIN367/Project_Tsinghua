@@ -159,6 +159,8 @@ function SwipeSheet({
 }
 
 export function PortfolioSheet({
+  isReset = false,
+  initialCapital,
   viewCount,
   openOrders,
   onClose,
@@ -166,6 +168,8 @@ export function PortfolioSheet({
   onOpenPosition,
   onOpenOrder,
 }: {
+  isReset?: boolean
+  initialCapital?: number
   viewCount: number
   openOrders: OpenOrder[]
   onClose: () => void
@@ -174,9 +178,12 @@ export function PortfolioSheet({
   onOpenOrder: (orderId: string) => void
 }) {
   const [tab, setTab] = useState<PortfolioTab>('long')
-  const longHoldings = instruments.filter((instrument) => instrument.longQuantity)
-  const shortHoldings = instruments.filter((instrument) => instrument.shortQuantity)
+  const longHoldings = isReset ? [] : instruments.filter((instrument) => instrument.longQuantity)
+  const shortHoldings = isReset ? [] : instruments.filter((instrument) => instrument.shortQuantity)
   const visibleHoldings = tab === 'long' ? longHoldings : shortHoldings
+  const visibleTotalAsset = isReset ? initialCapital ?? TOTAL_ASSET : TOTAL_ASSET
+  const visibleReturn = isReset ? 0 : TOTAL_RETURN
+  const visibleCash = isReset ? initialCapital ?? ORDERABLE_CASH : ORDERABLE_CASH
 
   return (
     <SwipeSheet edge="top" label="내 잔고" sheetClassName="social-sheet-portfolio" onClose={onClose}>
@@ -186,14 +193,14 @@ export function PortfolioSheet({
       </header>
 
       <section className="portfolio-nav-card" aria-label="내 자산 요약">
-        <span><small>총자산</small><strong>{formatWon(TOTAL_ASSET)}</strong></span>
-        <span><strong>{formatReturn(TOTAL_RETURN)}</strong><small>대회 시작 이후</small></span>
+        <span><small>총자산</small><strong>{formatWon(visibleTotalAsset)}</strong></span>
+        <span><strong>{formatReturn(visibleReturn)}</strong><small>{isReset ? '멀리건 사용 후' : '대회 시작 이후'}</small></span>
       </section>
 
       <section className="portfolio-balance-grid" aria-label="잔고 구성">
-        <span><small>주문 가능 현금</small><strong>{formatWon(ORDERABLE_CASH)}</strong></span>
-        <span><small>Long 평가액</small><strong>{formatWon(LONG_MARKET_VALUE)}</strong></span>
-        <span><small>Short 평가액</small><strong>{formatWon(SHORT_MARKET_VALUE)}</strong></span>
+        <span><small>주문 가능 현금</small><strong>{formatWon(visibleCash)}</strong></span>
+        <span><small>Long 평가액</small><strong>{formatWon(isReset ? 0 : LONG_MARKET_VALUE)}</strong></span>
+        <span><small>Short 평가액</small><strong>{formatWon(isReset ? 0 : SHORT_MARKET_VALUE)}</strong></span>
       </section>
 
       <div className="portfolio-tabs" role="tablist" aria-label="잔고 종류">
@@ -217,6 +224,8 @@ export function PortfolioSheet({
               </button>
             )
           })
+        ) : visibleHoldings.length === 0 ? (
+          <div className="portfolio-empty-state"><strong>{isReset ? '멀리건으로 보유종목을 정리했어요' : '보유종목이 없어요'}</strong><span>{isReset ? '현금 100%에서 다시 매매를 시작할 수 있어요.' : '매매를 시작하면 이곳에서 확인할 수 있어요.'}</span></div>
         ) : visibleHoldings.map((instrument) => {
           const quantity = tab === 'long' ? instrument.longQuantity ?? 0 : instrument.shortQuantity ?? 0
           const actionLabel = tab === 'long' ? '매도' : '상환'
