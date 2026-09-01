@@ -21,6 +21,43 @@ import {
 
 type SheetEdge = 'top' | 'bottom'
 type PortfolioTab = 'long' | 'short' | 'open'
+type TradeHistoryFilter = 'all' | 'long' | 'short'
+type TradeHistoryDirection = 'buy' | 'sell' | 'short' | 'cover'
+
+type TradeHistoryItem = {
+  id: string
+  type: 'trade'
+  dateLabel: string
+  direction: TradeHistoryDirection
+  instrumentName: string
+  instrumentCode: string
+  orderType: '시장가' | '지정가'
+  quantity: number
+  price: number
+  fee: number
+  executedAt: string
+} | {
+  id: string
+  type: 'mulligan'
+  executedAt: string
+}
+
+const tradeHistoryItems: TradeHistoryItem[] = [
+  { id: 'fill-1', type: 'trade', dateLabel: '오늘', direction: 'sell', instrumentName: 'SK하이닉스', instrumentCode: '000660', orderType: '시장가', quantity: 100, price: 176_500, fee: 35_300, executedAt: '오후 2:42:18' },
+  { id: 'fill-2', type: 'trade', dateLabel: '오늘', direction: 'buy', instrumentName: '삼성전자', instrumentCode: '005930', orderType: '지정가', quantity: 12, price: 74_100, fee: 0, executedAt: '오전 10:18:04' },
+  { id: 'fill-3', type: 'trade', dateLabel: '9월 1일', direction: 'cover', instrumentName: 'NAVER', instrumentCode: '035420', orderType: '시장가', quantity: 8, price: 211_000, fee: 0, executedAt: '오후 3:11:27' },
+  { id: 'mulligan-1', type: 'mulligan', executedAt: '8월 31일 오후 4:02' },
+  { id: 'fill-4', type: 'trade', dateLabel: '8월 31일', direction: 'short', instrumentName: '카카오', instrumentCode: '035720', orderType: '지정가', quantity: 40, price: 48_250, fee: 3_860, executedAt: '오후 1:36:52' },
+  { id: 'fill-5', type: 'trade', dateLabel: '8월 30일', direction: 'buy', instrumentName: 'KODEX 200', instrumentCode: '069500', orderType: '시장가', quantity: 25, price: 36_180, fee: 0, executedAt: '오전 9:21:13' },
+  { id: 'fill-6', type: 'trade', dateLabel: '8월 29일', direction: 'sell', instrumentName: '삼성전자', instrumentCode: '005930', orderType: '시장가', quantity: 20, price: 73_800, fee: 2_952, executedAt: '오후 2:57:40' },
+]
+
+const tradeDirectionMeta: Record<TradeHistoryDirection, { label: string; group: Exclude<TradeHistoryFilter, 'all'> }> = {
+  buy: { label: '매수', group: 'long' },
+  sell: { label: '매도', group: 'long' },
+  short: { label: '공매도', group: 'short' },
+  cover: { label: '상환', group: 'short' },
+}
 
 function SwipeSheet({
   edge,
@@ -165,6 +202,7 @@ export function PortfolioSheet({
   openOrders,
   onClose,
   onShare,
+  onOpenHistory,
   onOpenPosition,
   onOpenOrder,
 }: {
@@ -174,6 +212,7 @@ export function PortfolioSheet({
   openOrders: OpenOrder[]
   onClose: () => void
   onShare: () => void
+  onOpenHistory: () => void
   onOpenPosition: (instrumentCode: string, direction: 'sell' | 'cover') => void
   onOpenOrder: (orderId: string) => void
 }) {
@@ -241,7 +280,82 @@ export function PortfolioSheet({
 
       <footer className="portfolio-share-footer">
         <p>정확한 잔고는 공유 버튼을 누를 때만 대화방에 공개돼요.</p>
-        <button type="button" onClick={onShare}>채팅방에 잔고 공유</button>
+        <div className="portfolio-footer-actions">
+          <button type="button" className="is-history" onClick={onOpenHistory}>거래내역</button>
+          <button type="button" onClick={onShare}>채팅방에 잔고 공유</button>
+        </div>
+      </footer>
+    </SwipeSheet>
+  )
+}
+
+export function TradeHistorySheet({
+  competitionTitle,
+  periodLabel,
+  mulligansUsed = 0,
+  onClose,
+}: {
+  competitionTitle: string
+  periodLabel: string
+  mulligansUsed?: number
+  onClose: () => void
+}) {
+  const [filter, setFilter] = useState<TradeHistoryFilter>('all')
+  const visibleItems = tradeHistoryItems.filter((item) => item.type === 'mulligan' || filter === 'all' || tradeDirectionMeta[item.direction].group === filter)
+  const totalTrades = tradeHistoryItems.filter((item) => item.type === 'trade').length
+  const visibleFees = visibleItems.reduce((sum, item) => sum + (item.type === 'trade' ? item.fee : 0), 0)
+  let lastDateLabel = ''
+
+  return (
+    <SwipeSheet edge="bottom" label="내 거래내역" sheetClassName="social-sheet-trade-history" onClose={onClose}>
+      <header className="trade-history-header">
+        <span><small>{competitionTitle}</small><strong>내 거래내역</strong></span>
+        <em>체결 기준</em>
+      </header>
+
+      <section className="trade-history-period" aria-label="거래내역 조회 범위">
+        <span><small>이번 대회 조회 기간</small><strong>{periodLabel}</strong></span>
+        <span><em>진행 중</em><strong>총 {totalTrades}건</strong></span>
+        <p>대회 시작부터 지금까지 체결된 내 거래만 보여드려요.</p>
+      </section>
+
+      <div className="trade-history-filter" role="tablist" aria-label="거래 유형 필터">
+        {([
+          { id: 'all', label: '전체' },
+          { id: 'long', label: '매수 · 매도' },
+          { id: 'short', label: '공매도 · 상환' },
+        ] as const).map((item) => (
+          <button type="button" role="tab" aria-selected={filter === item.id} className={filter === item.id ? 'is-selected' : ''} onClick={() => setFilter(item.id)} key={item.id}>{item.label}</button>
+        ))}
+      </div>
+
+      <div className="trade-history-list" aria-live="polite">
+        {visibleItems.map((item) => {
+          if (item.type === 'mulligan') {
+            lastDateLabel = ''
+            if (mulligansUsed === 0) return null
+            return <div className="trade-history-mulligan" key={item.id}><span>멀리건 사용</span><strong>계좌를 초기자본으로 리셋했어요</strong><small>{item.executedAt} · 이전 거래도 보존</small></div>
+          }
+
+          const showDate = item.dateLabel !== lastDateLabel
+          lastDateLabel = item.dateLabel
+          const direction = tradeDirectionMeta[item.direction]
+          return (
+            <section className="trade-history-date-group" key={item.id}>
+              {showDate && <h3>{item.dateLabel}</h3>}
+              <article className="trade-history-row">
+                <span className={`trade-history-direction is-${item.direction}`}>{direction.label}</span>
+                <span className="trade-history-instrument"><strong>{item.instrumentName}</strong><small>{item.instrumentCode} · {item.orderType} · {item.executedAt}</small></span>
+                <span className="trade-history-value"><strong>{formatWon(item.price * item.quantity)}</strong><small>{item.quantity.toLocaleString('ko-KR')}주 × {formatWon(item.price)}</small><em>{item.fee ? `수수료 ${formatWon(item.fee)}` : '수수료 없음'}</em></span>
+              </article>
+            </section>
+          )
+        })}
+      </div>
+
+      <footer className="trade-history-footer">
+        <span><strong>표시된 수수료</strong><b>{formatWon(visibleFees)}</b></span>
+        <p>대회가 끝나면 라운지에서는 볼 수 없지만 기록은 삭제되지 않아요. 향후 전체 거래내역에서 다시 확인할 수 있습니다.</p>
       </footer>
     </SwipeSheet>
   )

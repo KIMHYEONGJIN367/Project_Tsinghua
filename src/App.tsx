@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { PortfolioSheet, RankingSheet } from './AccountSheets'
+import { PortfolioSheet, RankingSheet, TradeHistorySheet } from './AccountSheets'
 import {
   CompetitionHostSheet,
   CompetitionMulliganIcon,
@@ -1219,6 +1219,7 @@ function ChatRoomScreen({
   const [isTradeSheetOpen, setIsTradeSheetOpen] = useState(false)
   const [tradeEntryIntent, setTradeEntryIntent] = useState<TradeEntryIntent | null>(null)
   const [isPortfolioSheetOpen, setIsPortfolioSheetOpen] = useState(false)
+  const [isTradeHistorySheetOpen, setIsTradeHistorySheetOpen] = useState(false)
   const [isRankingSheetOpen, setIsRankingSheetOpen] = useState(false)
   const [isCompetitionHostSheetOpen, setIsCompetitionHostSheetOpen] = useState(false)
   const [isCompetitionParticipationSheetOpen, setIsCompetitionParticipationSheetOpen] = useState(false)
@@ -1247,6 +1248,16 @@ function ChatRoomScreen({
   const competitionReturn = usesExistingPortfolioMock ? TOTAL_RETURN : 0
   const competitionRemainingDays = room.competition ? getCompetitionRemainingDays(room.competition.endDate) : 0
   const competitionEndLabel = room.competition ? formatCompetitionDate(room.competition.endDate).replace(/^\d+년\s*/, '') : ''
+
+  useEffect(() => {
+    if (isCompetitionParticipant) return
+    setIsTradeSheetOpen(false)
+    setTradeEntryIntent(null)
+    setIsPortfolioSheetOpen(false)
+    setIsTradeHistorySheetOpen(false)
+    setIsRankingSheetOpen(false)
+    setIsMulliganConfirmOpen(false)
+  }, [isCompetitionParticipant, room.id])
 
   useEffect(() => {
     if (roomTimeline.length > 0) {
@@ -1393,13 +1404,23 @@ function ChatRoomScreen({
 
   const openPortfolioSheet = () => {
     setIsRankingSheetOpen(false)
+    setIsTradeHistorySheetOpen(false)
     onRecordSocialView('balance')
     setIsPortfolioSheetOpen(true)
+  }
+
+  const openTradeHistorySheet = () => {
+    if (!isCompetitionParticipant || !room.competition) return
+    closeTradeSheet()
+    setIsPortfolioSheetOpen(false)
+    setIsRankingSheetOpen(false)
+    setIsTradeHistorySheetOpen(true)
   }
 
   const openRankingSheet = () => {
     closeTradeSheet()
     setIsPortfolioSheetOpen(false)
+    setIsTradeHistorySheetOpen(false)
     onRecordSocialView('ranking')
     setIsRankingSheetOpen(true)
   }
@@ -1726,10 +1747,13 @@ function ChatRoomScreen({
           </section>
         </div>
       )}
-      {isPortfolioSheetOpen && (
-        <PortfolioSheet isReset={Boolean(room.accountReset)} initialCapital={room.competition?.initialCapital} viewCount={viewCounts.balance} openOrders={openOrders} onClose={() => setIsPortfolioSheetOpen(false)} onShare={sharePortfolio} onOpenPosition={openPositionTradeFromPortfolio} onOpenOrder={openOrderManagerFromPortfolio} />
+      {isCompetitionParticipant && isPortfolioSheetOpen && (
+        <PortfolioSheet isReset={Boolean(room.accountReset)} initialCapital={room.competition?.initialCapital} viewCount={viewCounts.balance} openOrders={openOrders} onClose={() => setIsPortfolioSheetOpen(false)} onShare={sharePortfolio} onOpenHistory={openTradeHistorySheet} onOpenPosition={openPositionTradeFromPortfolio} onOpenOrder={openOrderManagerFromPortfolio} />
       )}
-      {isRankingSheetOpen && (
+      {isCompetitionParticipant && isTradeHistorySheetOpen && room.competition && (
+        <TradeHistorySheet competitionTitle={room.competition.title} periodLabel={`${formatCompetitionDate(room.competition.startDate)} – ${formatCompetitionDate(room.competition.endDate)}`} mulligansUsed={mulligansUsed} onClose={() => setIsTradeHistorySheetOpen(false)} />
+      )}
+      {isCompetitionParticipant && isRankingSheetOpen && (
         <RankingSheet viewCount={viewCounts.ranking} onClose={() => setIsRankingSheetOpen(false)} />
       )}
       {isCompetitionHostSheetOpen && room.kind === 'group' && room.isHost && (

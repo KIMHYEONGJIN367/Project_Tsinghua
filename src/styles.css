@@ -5272,7 +5272,7 @@ body:has(.splash-shell) {
 .portfolio-share-footer {
   display: grid;
   flex-shrink: 0;
-  grid-template-columns: minmax(0, 1fr) 154px;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
   padding: 9px 16px 2px;
@@ -5287,7 +5287,13 @@ body:has(.splash-shell) {
   line-height: 1.45;
 }
 
-.portfolio-share-footer button {
+.portfolio-footer-actions {
+  display: grid;
+  grid-template-columns: 72px 126px;
+  gap: 6px;
+}
+
+.portfolio-footer-actions button {
   height: 40px;
   padding: 0 10px;
   border: 0;
@@ -5296,6 +5302,310 @@ body:has(.splash-shell) {
   color: #ffffff;
   font-size: 9px;
   font-weight: 700;
+}
+
+.portfolio-footer-actions button.is-history {
+  border: 1px solid #ded6d1;
+  background: #ffffff;
+  color: #514849;
+}
+
+.social-sheet-bottom.social-sheet-trade-history {
+  height: 88%;
+  background: #fcfbf9;
+}
+
+.trade-history-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 17px 12px;
+}
+
+.trade-history-header > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.trade-history-header small {
+  overflow: hidden;
+  color: #a63a42;
+  font-size: 7px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trade-history-header strong {
+  color: #252021;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -.35px;
+}
+
+.trade-history-header > em {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #f0ece8;
+  color: #746a67;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.trade-history-period {
+  display: grid;
+  flex-shrink: 0;
+  margin: 0 16px 11px;
+  padding: 12px 13px 10px;
+  border: 1px solid #eadfda;
+  border-radius: 15px;
+  background:
+    radial-gradient(circle at 90% -20%, rgba(184, 50, 60, .11), transparent 42%),
+    #fffaf7;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 10px;
+}
+
+.trade-history-period > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trade-history-period > span:nth-child(2) {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.trade-history-period small {
+  color: #948783;
+  font-size: 7px;
+}
+
+.trade-history-period strong {
+  overflow: hidden;
+  color: #3c3432;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trade-history-period > span:nth-child(2) em {
+  color: #ab3039;
+  font-size: 7px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.trade-history-period > span:nth-child(2) strong {
+  font-size: 10px;
+}
+
+.trade-history-period p {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  padding-top: 8px;
+  border-top: 1px solid #eee5e0;
+  color: #8f827e;
+  font-size: 7px;
+}
+
+.trade-history-filter {
+  display: flex;
+  flex-shrink: 0;
+  margin: 0 16px 6px;
+  gap: 6px;
+}
+
+.trade-history-filter button {
+  min-height: 29px;
+  padding: 0 11px;
+  border: 1px solid #e8e1dc;
+  border-radius: 999px;
+  background: #fff;
+  color: #837876;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.trade-history-filter button.is-selected {
+  border-color: #2d2828;
+  background: #2d2828;
+  color: #fff;
+}
+
+.trade-history-list {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 16px 8px;
+  scrollbar-width: none;
+}
+
+.trade-history-list::-webkit-scrollbar {
+  display: none;
+}
+
+.trade-history-date-group h3 {
+  margin: 10px 0 4px;
+  color: #9b908c;
+  font-size: 7px;
+  font-weight: 750;
+}
+
+.trade-history-row {
+  display: grid;
+  min-height: 59px;
+  border-bottom: 1px solid #eee8e4;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.trade-history-direction {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  place-items: center;
+  font-size: 7px;
+  font-weight: 820;
+}
+
+.trade-history-direction.is-buy {
+  background: #fff0ef;
+  color: #bd343d;
+}
+
+.trade-history-direction.is-sell {
+  background: #edf4ff;
+  color: #366fb4;
+}
+
+.trade-history-direction.is-short {
+  background: #f3efff;
+  color: #7152a6;
+}
+
+.trade-history-direction.is-cover {
+  background: #eaf7f1;
+  color: #277861;
+}
+
+.trade-history-instrument,
+.trade-history-value {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.trade-history-instrument strong,
+.trade-history-value strong {
+  overflow: hidden;
+  color: #393132;
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trade-history-instrument small,
+.trade-history-value small {
+  color: #968b88;
+  font-size: 6.5px;
+}
+
+.trade-history-value {
+  max-width: 116px;
+  align-items: flex-end;
+  text-align: right;
+}
+
+.trade-history-value em {
+  color: #a89c98;
+  font-size: 6px;
+  font-style: normal;
+}
+
+.trade-history-mulligan {
+  position: relative;
+  display: grid;
+  margin: 13px 0 6px;
+  padding: 10px 11px 10px 43px;
+  border: 1px solid #eedbd5;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fff4ef, #fffaf7);
+  gap: 2px;
+}
+
+.trade-history-mulligan::before {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  display: grid;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  background: #efd7d2;
+  color: #a52c36;
+  content: '↺';
+  place-items: center;
+  font-size: 13px;
+  transform: translateY(-50%);
+}
+
+.trade-history-mulligan span {
+  color: #a52c36;
+  font-size: 6px;
+  font-weight: 800;
+  letter-spacing: .4px;
+}
+
+.trade-history-mulligan strong {
+  color: #574642;
+  font-size: 8px;
+}
+
+.trade-history-mulligan small {
+  color: #9b8882;
+  font-size: 6.5px;
+}
+
+.trade-history-footer {
+  flex-shrink: 0;
+  padding: 9px 16px 3px;
+  border-top: 1px solid #eae3de;
+  background: #fff;
+}
+
+.trade-history-footer > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.trade-history-footer > span strong {
+  color: #776c69;
+  font-size: 7px;
+}
+
+.trade-history-footer > span b {
+  color: #3b3331;
+  font-size: 9px;
+}
+
+.trade-history-footer p {
+  margin: 6px 0 0;
+  color: #9b908c;
+  font-size: 6.5px;
+  line-height: 1.4;
 }
 
 .ranking-sheet-header {
