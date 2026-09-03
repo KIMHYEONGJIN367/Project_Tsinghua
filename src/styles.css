@@ -4760,7 +4760,7 @@ body:has(.splash-shell) {
 
 .chat-account-hud-footer > div.has-mulligan {
   width: 192px;
-  grid-template-columns: 1.4fr repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 4px;
 }
 
@@ -4783,39 +4783,17 @@ body:has(.splash-shell) {
 
 .chat-account-hud-footer .chat-mulligan-button {
   display: flex;
-  padding: 0 5px;
+  padding: 0;
   border-color: rgba(255, 239, 203, 0.46);
   background: linear-gradient(135deg, rgba(255, 238, 190, 0.22), rgba(255, 255, 255, 0.1));
   color: #fff8dd;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-}
-
-.chat-account-hud-footer .chat-mulligan-button svg {
-  width: 13px;
-  height: 13px;
-  flex-shrink: 0;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 1.8;
 }
 
 .chat-account-hud-footer .chat-mulligan-button span {
-  font-size: 7.5px;
-  letter-spacing: -.1px;
-}
-
-.chat-account-hud-footer .chat-mulligan-button b {
-  display: grid;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background: #fff3cf;
-  color: #7d2730;
-  place-items: center;
-  font-size: 7px;
+  font-size: 9px;
+  font-weight: 760;
 }
 
 .chat-account-hud-footer .chat-mulligan-button:disabled {

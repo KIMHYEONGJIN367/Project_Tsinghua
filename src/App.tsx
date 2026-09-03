@@ -1419,6 +1419,11 @@ function ChatRoomScreen({
     setIsTradeHistorySheetOpen(true)
   }
 
+  const returnToPortfolioFromTradeHistory = () => {
+    setIsTradeHistorySheetOpen(false)
+    if (isCompetitionParticipant) setIsPortfolioSheetOpen(true)
+  }
+
   const openRankingSheet = () => {
     closeTradeSheet()
     setIsPortfolioSheetOpen(false)
@@ -1484,8 +1489,8 @@ function ChatRoomScreen({
               <span className="chat-account-deadline"><b>{competitionRemainingDays === 0 ? 'D-DAY' : `D-${competitionRemainingDays}`}</b><span>{competitionEndLabel} 종료</span></span>
               <div className={hasMulliganRule ? 'has-mulligan' : ''}>
                 {hasMulliganRule && (
-                  <button type="button" className="chat-mulligan-button" disabled={mulligansRemaining === 0} aria-label={`멀리건 ${mulligansRemaining}회 남음`} onClick={() => setIsMulliganConfirmOpen(true)}>
-                    <CompetitionMulliganIcon /><span>멀리건</span><b>{mulligansRemaining}</b>
+                  <button type="button" className="chat-mulligan-button" disabled={mulligansRemaining === 0} aria-label="멀리건 사용" onClick={() => setIsMulliganConfirmOpen(true)}>
+                    <span>멀리건</span>
                   </button>
                 )}
                 <button type="button" onClick={openRankingSheet}>순위</button>
@@ -1753,7 +1758,7 @@ function ChatRoomScreen({
         <PortfolioSheet isReset={Boolean(room.accountReset)} initialCapital={room.competition?.initialCapital} viewCount={viewCounts.balance} openOrders={openOrders} onClose={() => setIsPortfolioSheetOpen(false)} onShare={sharePortfolio} onOpenHistory={openTradeHistorySheet} onOpenPosition={openPositionTradeFromPortfolio} onOpenOrder={openOrderManagerFromPortfolio} />
       )}
       {isCompetitionParticipant && isTradeHistorySheetOpen && room.competition && (
-        <TradeHistorySheet competitionTitle={room.competition.title} periodLabel={`${formatCompetitionDate(room.competition.startDate)} – ${formatCompetitionDate(room.competition.endDate)}`} mulligansUsed={mulligansUsed} onClose={() => setIsTradeHistorySheetOpen(false)} />
+        <TradeHistorySheet competitionTitle={room.competition.title} periodLabel={`${formatCompetitionDate(room.competition.startDate)} – ${formatCompetitionDate(room.competition.endDate)}`} mulligansUsed={mulligansUsed} onClose={returnToPortfolioFromTradeHistory} />
       )}
       {isCompetitionParticipant && isRankingSheetOpen && (
         <RankingSheet viewCount={viewCounts.ranking} onClose={() => setIsRankingSheetOpen(false)} />
