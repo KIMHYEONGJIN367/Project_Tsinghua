@@ -4783,17 +4783,8 @@ body:has(.splash-shell) {
 
 .chat-account-hud-footer .chat-mulligan-button {
   display: flex;
-  padding: 0;
-  border-color: rgba(255, 239, 203, 0.46);
-  background: linear-gradient(135deg, rgba(255, 238, 190, 0.22), rgba(255, 255, 255, 0.1));
-  color: #fff8dd;
   align-items: center;
   justify-content: center;
-}
-
-.chat-account-hud-footer .chat-mulligan-button span {
-  font-size: 9px;
-  font-weight: 760;
 }
 
 .chat-account-hud-footer .chat-mulligan-button:disabled {
