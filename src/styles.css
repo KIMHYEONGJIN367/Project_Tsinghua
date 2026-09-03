@@ -1,13 +1,29 @@
 @font-face {
-  font-family: "Pretendard Variable";
+  font-family: "Kakao Small Sans";
   font-style: normal;
-  font-weight: 45 920;
+  font-weight: 300;
   font-display: swap;
-  src: url("./assets/fonts/PretendardVariable.woff2") format("woff2-variations");
+  src: url("./assets/fonts/KakaoSmallSans-Light.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Kakao Small Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("./assets/fonts/KakaoSmallSans-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Kakao Small Sans";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("./assets/fonts/KakaoSmallSans-Bold.woff2") format("woff2");
 }
 
 :root {
-  --app-font: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --app-font: "Kakao Small Sans", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Segoe UI", sans-serif;
   color: #ffffff;
   background: #050609;
   font-family: var(--app-font);
@@ -7684,7 +7700,7 @@ body:has(.utility-shell) {
 .competition-manage-hero h2 {
   margin: 5px 0 6px;
   color: #2b2522;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: var(--app-font);
   font-size: 23px;
   font-weight: 600;
   letter-spacing: -.04em;

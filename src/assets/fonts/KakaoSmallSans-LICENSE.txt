@@ -1,0 +1,11 @@
+Kakao Small Sans
+Copyright Kakao Corp.
+
+Official source:
+https://www.kakaocorp.com/page/detail/11571
+
+Kakao distributes this typeface under the SIL Open Font License, Version 1.1,
+for free personal and commercial use, including web and application embedding.
+
+The full SIL Open Font License 1.1 text is available at:
+https://openfontlicense.org/open-font-license-official-text/

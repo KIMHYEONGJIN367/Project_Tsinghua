@@ -84,7 +84,7 @@ function TradingViewChart({ stock }: { stock: WatchStock }) {
     const chart = createChart(container, {
       width: container.clientWidth,
       height: container.clientHeight,
-      layout: { background: { type: ColorType.Solid, color: '#ffffff' }, textColor: '#9f9596', fontFamily: 'Pretendard Variable, Pretendard, sans-serif', fontSize: 10 },
+      layout: { background: { type: ColorType.Solid, color: '#ffffff' }, textColor: '#9f9596', fontFamily: 'Kakao Small Sans, sans-serif', fontSize: 10 },
       localization: { priceFormatter: (price: number) => Math.round(price).toLocaleString('ko-KR') },
       grid: { vertLines: { color: '#f4f0ef' }, horzLines: { color: '#f1eceb' } },
       crosshair: { mode: CrosshairMode.Normal, vertLine: { color: '#bdb3b4', width: 1 }, horzLine: { color: '#bdb3b4', width: 1 } },
