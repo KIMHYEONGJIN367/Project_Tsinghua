@@ -19,6 +19,7 @@ import {
   type LoungeCompetition,
 } from './CompetitionLifecycle'
 import TradeDrafts from './TradeDrafts'
+import InvestmentScreen from './InvestmentScreen'
 import {
   CURRENT_RANK,
   TOTAL_ASSET,
@@ -57,7 +58,7 @@ import splashTrending from './assets/trending-up.svg'
 
 type FeedMode = 'invest' | 'friends'
 type InvestCardVariant = 'default' | 'compact' | 'scoreboard'
-type ScreenKey = 'home' | 'chat-list' | 'chat-room' | 'competition-join' | 'lounge-create' | 'friend-add' | 'my' | 'splash'
+type ScreenKey = 'home' | 'chat-list' | 'chat-room' | 'competition-join' | 'lounge-create' | 'friend-add' | 'invest' | 'my' | 'splash'
 type NavKey = 'home' | 'chat' | 'invest' | 'my'
 type ChatFilter = 'all' | 'group' | 'personal'
 type ChatRoomKind = 'group' | 'personal'
@@ -817,6 +818,7 @@ function BottomNav({ icons, activeMode, activeKey = 'home', onNavigate }: { icon
           onClick={() => {
             if (item.key === 'home') onNavigate?.('home')
             if (item.key === 'chat') onNavigate?.('chat-list')
+            if (item.key === 'invest') onNavigate?.('invest')
             if (item.key === 'my') onNavigate?.('my')
           }}
         >
@@ -2574,7 +2576,7 @@ export default function App() {
     const params = new URLSearchParams(window.location.search)
     if (params.get('invite')) return 'competition-join'
     const requestedScreen = params.get('screen')
-    if (requestedScreen === 'chat-list' || requestedScreen === 'chat-room' || requestedScreen === 'competition-join' || requestedScreen === 'lounge-create' || requestedScreen === 'friend-add' || requestedScreen === 'my' || requestedScreen === 'splash') return requestedScreen
+    if (requestedScreen === 'chat-list' || requestedScreen === 'chat-room' || requestedScreen === 'competition-join' || requestedScreen === 'lounge-create' || requestedScreen === 'friend-add' || requestedScreen === 'invest' || requestedScreen === 'my' || requestedScreen === 'splash') return requestedScreen
     return 'home'
   })
 
@@ -3000,6 +3002,7 @@ export default function App() {
     )
   }
   if (screen === 'my') return <MyScreen onNavigate={navigate} onOpenCompetition={openMyCompetition} />
+  if (screen === 'invest') return <InvestmentScreen onNavigate={navigate} />
   if (screen === 'splash') return <SplashScreen />
   return (
     <HomeFeed
