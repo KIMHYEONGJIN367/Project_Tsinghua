@@ -163,7 +163,7 @@ const friendsIcons: FeedIcons = {
 
 const navItems: Array<{ key: NavKey; label: string; icon: keyof Pick<FeedIcons, 'home' | 'message' | 'trending' | 'user'> }> = [
   { key: 'home', label: '홈', icon: 'home' },
-  { key: 'chat', label: '대회', icon: 'message' },
+  { key: 'chat', label: '라운지', icon: 'message' },
   { key: 'invest', label: '투자', icon: 'trending' },
   { key: 'my', label: '마이', icon: 'user' },
 ]
@@ -515,7 +515,7 @@ function ChatListQuickMenu({ onNavigate }: { onNavigate: (screen: ScreenKey) => 
       <button
         type="button"
         className={`header-add-trigger ${isQuickMenuOpen ? 'is-open' : ''}`}
-        aria-label="대회 빠른 메뉴 열기"
+        aria-label="라운지 빠른 메뉴 열기"
         aria-haspopup="menu"
         aria-expanded={isQuickMenuOpen}
         onClick={() => setIsQuickMenuOpen((isOpen) => !isOpen)}
@@ -523,7 +523,7 @@ function ChatListQuickMenu({ onNavigate }: { onNavigate: (screen: ScreenKey) => 
         <Icon src={friendsPlus} size={22} />
       </button>
       {isQuickMenuOpen && (
-        <div className="home-quick-menu chat-list-quick-menu" role="menu" aria-label="대회 빠른 메뉴">
+        <div className="home-quick-menu chat-list-quick-menu" role="menu" aria-label="라운지 빠른 메뉴">
           <button type="button" className="home-quick-action" role="menuitem" onClick={() => openScreen('lounge-create')}>
             <span className="home-quick-action-icon"><HomeQuickActionIcon kind="lounge" /></span>
             <span className="home-quick-action-copy"><strong>라운지 만들기</strong></span>
@@ -1105,7 +1105,7 @@ function ChatListScreen({ onNavigate, rooms, onRoomsChange, onOpenRoom, onForfei
       <div className="chat-top-container">
         <StatusBar icons={friendsIcons} nodePrefix="2" />
         <header className="chat-header">
-          <h1>대회</h1>
+          <h1>라운지</h1>
           <ChatListQuickMenu onNavigate={onNavigate} />
         </header>
         <div className="chat-filter-tabs" role="tablist" aria-label="대화 필터">
@@ -1127,7 +1127,7 @@ function ChatListScreen({ onNavigate, rooms, onRoomsChange, onOpenRoom, onForfei
               </button>
             ))}
           </div>
-          <InlineSearch icon={friendsSearch} value={chatQuery} placeholder="검색" ariaLabel="대회 검색" onChange={setChatQuery} />
+          <InlineSearch icon={friendsSearch} value={chatQuery} placeholder="검색" ariaLabel="라운지 검색" onChange={setChatQuery} />
         </div>
         <section className="chat-room-list" aria-label="대화 목록">
           {visibleChatRooms.map((room) => (

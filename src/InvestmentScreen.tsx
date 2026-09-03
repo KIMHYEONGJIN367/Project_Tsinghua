@@ -188,7 +188,7 @@ function StatusBar() {
 function BottomNav({ onNavigate }: { onNavigate: (screen: InvestmentRoute) => void }) {
   const items = [
     { key: 'home' as const, label: '홈', icon: investHome },
-    { key: 'chat-list' as const, label: '대회', icon: investMessage },
+    { key: 'chat-list' as const, label: '라운지', icon: investMessage },
     { key: 'invest' as const, label: '투자', icon: investTrending },
     { key: 'my' as const, label: '마이', icon: friendsUser },
   ]
