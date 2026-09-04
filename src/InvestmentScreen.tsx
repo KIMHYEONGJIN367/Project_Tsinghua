@@ -253,7 +253,7 @@ export default function InvestmentScreen({ onNavigate }: { onNavigate: (screen: 
     <main className="app-shell investment-screen">
       <div className="investment-scroll">
         <StatusBar />
-        <header className="investment-header"><div><small>MARKET</small><h1>투자</h1></div><span><i aria-hidden="true" /> 장중</span></header>
+        <header className="investment-header"><h1>투자</h1></header>
         <section className="investment-focus" aria-live="polite">
           <div className="investment-focus-heading"><div><strong>{selected.name}</strong><small>{selected.code} · KRX</small></div><span className="investment-live"><i aria-hidden="true" /> 실시간</span></div>
           <div className="investment-focus-price"><strong>{formatPrice(selected.price)}</strong><span className={tone(selected)}>{formatChangeAmount(selected.changeAmount)} · {formatChangeRate(selected.changeRate)}</span></div>
