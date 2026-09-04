@@ -436,7 +436,7 @@ function FeedHeader({ icons, nodePrefix, onQuickAction }: { icons: FeedIcons; no
           aria-expanded={isQuickMenuOpen}
           onClick={() => setIsQuickMenuOpen((isOpen) => !isOpen)}
         >
-          <Icon src={icons.plus} nodeId={`${nodePrefix}:721`} />
+          <Icon src={icons.plus} size={24} nodeId={`${nodePrefix}:721`} />
         </button>
         {isQuickMenuOpen && (
           <div className="home-quick-menu" role="menu" aria-label="빠른 메뉴">
@@ -520,7 +520,7 @@ function ChatListQuickMenu({ onNavigate }: { onNavigate: (screen: ScreenKey) => 
         aria-expanded={isQuickMenuOpen}
         onClick={() => setIsQuickMenuOpen((isOpen) => !isOpen)}
       >
-        <Icon src={friendsPlus} size={22} />
+        <Icon src={friendsPlus} size={24} />
       </button>
       {isQuickMenuOpen && (
         <div className="home-quick-menu chat-list-quick-menu" role="menu" aria-label="라운지 빠른 메뉴">

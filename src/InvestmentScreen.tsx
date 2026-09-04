@@ -21,19 +21,38 @@ type WatchStock = {
   high: number
   low: number
   volume: string
-  sparkline: string
 }
+
+type LeaderEntry = {
+  rank: number
+  name: string
+  returnRate: number
+}
+
+type LeaderScope = 'all' | 'friends'
 
 const STORAGE_KEY = 'tiantou-investment-watchlist-v1'
 const STOCKS: WatchStock[] = [
-  { id: 'samsung-electronics', name: '삼성전자', code: '005930', price: 72400, changeAmount: -300, changeRate: -0.41, high: 73100, low: 71800, volume: '1,240만', sparkline: 'M2 25 C14 17 21 26 31 16 S48 10 57 17 S72 7 82 8' },
-  { id: 'sk-hynix', name: 'SK하이닉스', code: '000660', price: 186700, changeAmount: 2900, changeRate: 1.58, high: 188200, low: 181500, volume: '398만', sparkline: 'M2 28 C13 26 22 16 31 20 S47 12 58 13 S72 5 82 7' },
-  { id: 'hyundai-motor', name: '현대차', code: '005380', price: 244500, changeAmount: 1000, changeRate: 0.41, high: 247000, low: 241000, volume: '82.6만', sparkline: 'M2 23 C15 21 23 24 33 18 S50 21 60 13 S74 16 82 10' },
-  { id: 'celltrion', name: '셀트리온', code: '068270', price: 194200, changeAmount: -2000, changeRate: -1.02, high: 197300, low: 193500, volume: '46.2만', sparkline: 'M2 8 C15 12 23 7 33 15 S48 17 58 21 S73 24 82 27' },
-  { id: 'naver', name: 'NAVER', code: '035420', price: 217000, changeAmount: 1500, changeRate: 0.7, high: 218500, low: 213000, volume: '61.8만', sparkline: 'M2 27 C13 19 22 22 32 15 S48 18 58 10 S73 12 82 6' },
-  { id: 'kakao', name: '카카오', code: '035720', price: 43850, changeAmount: -350, changeRate: -0.79, high: 44650, low: 43600, volume: '112만', sparkline: 'M2 7 C14 10 23 14 32 12 S48 20 59 18 S72 27 82 24' },
-  { id: 'samsung-biologics', name: '삼성바이오로직스', code: '207940', price: 1012000, changeAmount: 8000, changeRate: 0.8, high: 1019000, low: 997000, volume: '7.8만', sparkline: 'M2 25 C15 19 24 23 34 15 S49 11 59 13 S72 5 82 8' },
+  { id: 'samsung-electronics', name: '삼성전자', code: '005930', price: 72400, changeAmount: -300, changeRate: -0.41, high: 73100, low: 71800, volume: '1,240만' },
+  { id: 'sk-hynix', name: 'SK하이닉스', code: '000660', price: 186700, changeAmount: 2900, changeRate: 1.58, high: 188200, low: 181500, volume: '398만' },
+  { id: 'hyundai-motor', name: '현대차', code: '005380', price: 244500, changeAmount: 1000, changeRate: 0.41, high: 247000, low: 241000, volume: '82.6만' },
+  { id: 'celltrion', name: '셀트리온', code: '068270', price: 194200, changeAmount: -2000, changeRate: -1.02, high: 197300, low: 193500, volume: '46.2만' },
+  { id: 'naver', name: 'NAVER', code: '035420', price: 217000, changeAmount: 1500, changeRate: 0.7, high: 218500, low: 213000, volume: '61.8만' },
+  { id: 'kakao', name: '카카오', code: '035720', price: 43850, changeAmount: -350, changeRate: -0.79, high: 44650, low: 43600, volume: '112만' },
+  { id: 'samsung-biologics', name: '삼성바이오로직스', code: '207940', price: 1012000, changeAmount: 8000, changeRate: 0.8, high: 1019000, low: 997000, volume: '7.8만' },
 ]
+const LEADER_GROUPS: Record<LeaderScope, { label: string; entries: LeaderEntry[] }> = {
+  all: { label: '전체', entries: [
+    { rank: 1, name: '이준호', returnRate: 48.72 },
+    { rank: 2, name: '박서연', returnRate: 42.18 },
+    { rank: 3, name: '최민재', returnRate: 37.64 },
+  ] },
+  friends: { label: '친구', entries: [
+    { rank: 1, name: '정다은', returnRate: 31.45 },
+    { rank: 2, name: '박지훈', returnRate: 24.83 },
+    { rank: 3, name: '윤서진', returnRate: 19.67 },
+  ] },
+}
 const STOCK_BY_ID = Object.fromEntries(STOCKS.map((stock) => [stock.id, stock])) as Record<string, WatchStock>
 const DEFAULT_WATCHLIST = ['samsung-electronics', 'sk-hynix', 'hyundai-motor', 'celltrion']
 
@@ -125,6 +144,39 @@ function TradingViewChart({ stock }: { stock: WatchStock }) {
   )
 }
 
+function RankingCrown() {
+  return <svg className="investment-ranking-crown" viewBox="0 0 28 20" fill="none" aria-hidden="true"><path d="m3 15-1-10 7 5 5-8 5 8 7-5-1 10H3Z" /><path d="M4 18h20" /></svg>
+}
+
+function TopTierSummary() {
+  const [scope, setScope] = useState<LeaderScope>('all')
+  const group = LEADER_GROUPS[scope]
+  const topThree = [...group.entries]
+    .sort((left, right) => right.returnRate - left.returnRate || left.name.localeCompare(right.name, 'ko-KR'))
+    .slice(0, 3)
+    .map((entry, index) => ({ ...entry, rank: index + 1 }))
+  const podium = [topThree[1], topThree[0], topThree[2]].filter((entry): entry is LeaderEntry => Boolean(entry))
+
+  return (
+    <section className="investment-top-tier" aria-labelledby="investment-top-tier-title">
+      <header>
+        <div><h2 id="investment-top-tier-title">랭킹</h2><small><i aria-hidden="true" />1분마다 갱신</small></div>
+        <span>누적 수익률</span>
+      </header>
+      <div className="investment-ranking-tabs" role="tablist" aria-label="랭킹 범위">
+        {(Object.keys(LEADER_GROUPS) as LeaderScope[]).map((key) => <button type="button" role="tab" className={scope === key ? 'is-selected' : ''} aria-selected={scope === key} onClick={() => setScope(key)} key={key}>{LEADER_GROUPS[key].label}</button>)}
+      </div>
+      <div className="investment-ranking-podium" aria-label={`${group.label} 누적 수익률 상위 3명`} aria-live="polite">
+        {podium.map((entry) => <article className={`is-rank-${entry.rank}`} key={`${scope}-${entry.name}`}>
+          <div className="investment-ranking-avatar">{entry.rank === 1 && <RankingCrown />}<span>{entry.name.slice(0, 1)}</span><i>{entry.rank}</i></div>
+          <strong>{entry.name}</strong>
+          <small>{entry.returnRate > 0 ? '+' : ''}{entry.returnRate.toFixed(2)}%</small>
+        </article>)}
+      </div>
+    </section>
+  )
+}
+
 function SwipeRow({ stock, selected, open, onOpen, onClose, onSelect, onRemove }: { stock: WatchStock; selected: boolean; open: boolean; onOpen: () => void; onClose: () => void; onSelect: () => void; onRemove: () => void }) {
   const gestureRef = useRef({ x: 0, y: 0, offset: 0, dragging: false, horizontal: false })
   const [dragOffset, setDragOffset] = useState<number | null>(null)
@@ -166,7 +218,7 @@ function SwipeRow({ stock, selected, open, onOpen, onClose, onSelect, onRemove }
         type="button"
         className="investment-watch-surface"
         aria-current={selected ? 'true' : undefined}
-        aria-label={`${stock.name}, ${formatPrice(stock.price)}, ${formatChangeRate(stock.changeRate)}. 왼쪽으로 밀어 삭제`}
+        aria-label={`${stock.name}, ${formatPrice(stock.price)}, ${formatChangeRate(stock.changeRate)}, 고가 ${stock.high.toLocaleString('ko-KR')}원, 저가 ${stock.low.toLocaleString('ko-KR')}원, 거래량 ${stock.volume}. 왼쪽으로 밀어 삭제`}
         onPointerDown={pointerDown}
         onPointerMove={pointerMove}
         onPointerUp={pointerEnd}
@@ -174,8 +226,12 @@ function SwipeRow({ stock, selected, open, onOpen, onClose, onSelect, onRemove }
         style={{ transform: `translate3d(${offset}px, 0, 0)` }}
       >
         <span className="investment-watch-identity"><strong>{stock.name}</strong><small>{stock.code}</small></span>
-        <svg className={`investment-watch-spark ${tone(stock)}`} viewBox="0 0 84 34" aria-hidden="true"><path d={stock.sparkline} /></svg>
         <span className="investment-watch-numbers"><strong>{formatPrice(stock.price)}</strong><small className={tone(stock)}>{formatChangeRate(stock.changeRate)}</small></span>
+        <span className="investment-watch-metrics" aria-hidden="true">
+          <small><em>고</em>{stock.high.toLocaleString('ko-KR')}</small>
+          <small><em>저</em>{stock.low.toLocaleString('ko-KR')}</small>
+          <small><em>거래량</em>{stock.volume}</small>
+        </span>
       </button>
     </div>
   )
@@ -198,18 +254,21 @@ function BottomNav({ onNavigate }: { onNavigate: (screen: InvestmentRoute) => vo
 function initialWatchlist() {
   if (typeof window === 'undefined') return DEFAULT_WATCHLIST
   try {
-    const stored = JSON.parse(window.localStorage.getItem(STORAGE_KEY) ?? '[]')
+    const saved = window.localStorage.getItem(STORAGE_KEY)
+    if (saved === null) return DEFAULT_WATCHLIST
+    const stored = JSON.parse(saved)
     if (!Array.isArray(stored)) return DEFAULT_WATCHLIST
     const valid = stored.filter((id): id is string => typeof id === 'string' && Boolean(STOCK_BY_ID[id]))
-    return valid.length ? valid : DEFAULT_WATCHLIST
+    return valid
   } catch { return DEFAULT_WATCHLIST }
 }
 
 export default function InvestmentScreen({ onNavigate }: { onNavigate: (screen: InvestmentRoute) => void }) {
   const [watchIds, setWatchIds] = useState<string[]>(initialWatchlist)
-  const [selectedId, setSelectedId] = useState(() => initialWatchlist()[0])
+  const [selectedId, setSelectedId] = useState(STOCKS[0].id)
   const [openSwipeId, setOpenSwipeId] = useState<string | null>(null)
   const [isAddOpen, setIsAddOpen] = useState(false)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [removed, setRemoved] = useState<{ id: string; index: number } | null>(null)
   const toastTimer = useRef<number | null>(null)
@@ -221,19 +280,27 @@ export default function InvestmentScreen({ onNavigate }: { onNavigate: (screen: 
   useEffect(() => () => { if (toastTimer.current) window.clearTimeout(toastTimer.current) }, [])
 
   const addStock = (id: string) => {
+    if (watchIds.length === 0) setSelectedId(id)
     setWatchIds((current) => current.includes(id) ? current : [...current, id])
-    setSelectedId(id)
-    setQuery('')
-    setIsAddOpen(false)
+  }
+  const toggleStockFromAddSheet = (id: string) => {
+    const watched = watchIds.includes(id)
+    if (!watched) {
+      addStock(id)
+      return
+    }
+    const next = watchIds.filter((watchId) => watchId !== id)
+    setWatchIds(next)
+    if (selectedId === id && next[0]) setSelectedId(next[0])
   }
   const removeStock = (id: string) => {
-    if (watchIds.length <= 1) return
     const index = watchIds.indexOf(id)
     const next = watchIds.filter((watchId) => watchId !== id)
     setRemoved({ id, index })
     setWatchIds(next)
     setOpenSwipeId(null)
-    if (selectedId === id) setSelectedId(next[Math.min(index, next.length - 1)])
+    const nextSelected = next[Math.min(index, next.length - 1)]
+    if (selectedId === id && nextSelected) setSelectedId(nextSelected)
     if (toastTimer.current) window.clearTimeout(toastTimer.current)
     toastTimer.current = window.setTimeout(() => setRemoved(null), 4200)
   }
@@ -254,17 +321,18 @@ export default function InvestmentScreen({ onNavigate }: { onNavigate: (screen: 
       <div className="investment-scroll">
         <StatusBar />
         <header className="investment-header"><h1>투자</h1></header>
+        <TopTierSummary />
         <section className="investment-focus" aria-live="polite">
-          <div className="investment-focus-heading"><div><strong>{selected.name}</strong><small>{selected.code} · KRX</small></div><span className="investment-live"><i aria-hidden="true" /> 실시간</span></div>
+          <div className="investment-focus-heading">
+            <div className="investment-focus-identity"><strong>{selected.name}</strong><small>{selected.code} · KRX</small></div>
+            <div className="investment-focus-actions"><span className="investment-live"><i aria-hidden="true" /> 실시간</span><button type="button" onClick={() => { setQuery(''); setIsSearchOpen(true); setIsAddOpen(false); setOpenSwipeId(null) }}><Icon kind="search" /> 종목 찾기</button></div>
+          </div>
           <div className="investment-focus-price"><strong>{formatPrice(selected.price)}</strong><span className={tone(selected)}>{formatChangeAmount(selected.changeAmount)} · {formatChangeRate(selected.changeRate)}</span></div>
-          <small className="investment-updated-at">15:18:24 기준</small>
           <TradingViewChart stock={selected} />
-          <div className="investment-quote-summary"><span>고가 <b>{selected.high.toLocaleString('ko-KR')}</b></span><span>저가 <b>{selected.low.toLocaleString('ko-KR')}</b></span><span>거래량 <b>{selected.volume}</b></span></div>
         </section>
         <section className="investment-watchlist">
-          <header><div><h2>관심 종목</h2><span>{watchIds.length}</span></div><button type="button" onClick={() => { setQuery(''); setIsAddOpen(true); setOpenSwipeId(null) }}><Icon kind="plus" /> 종목 추가</button></header>
-          <p className="investment-swipe-hint">종목을 눌러 차트를 바꾸고, 왼쪽으로 밀어 삭제하세요.</p>
-          <div className="investment-watch-rows">{watchIds.map((id) => {
+          <header><div><h2>관심 종목</h2><span>{watchIds.length}</span></div><button type="button" onClick={() => { setQuery(''); setIsAddOpen(true); setIsSearchOpen(false); setOpenSwipeId(null) }}><Icon kind="plus" /> 종목 추가</button></header>
+          <div className="investment-watch-rows">{watchIds.length === 0 && <div className="investment-watch-empty"><strong>관심 종목이 없어요</strong><span>종목 추가에서 관심 종목을 선택해 보세요.</span></div>}{watchIds.map((id) => {
             const stock = STOCK_BY_ID[id]
             return <SwipeRow stock={stock} selected={id === selected.id} open={openSwipeId === id} onOpen={() => setOpenSwipeId(id)} onClose={() => setOpenSwipeId(null)} onSelect={() => { setSelectedId(id); setOpenSwipeId(null) }} onRemove={() => removeStock(id)} key={id} />
           })}</div>
@@ -272,16 +340,30 @@ export default function InvestmentScreen({ onNavigate }: { onNavigate: (screen: 
       </div>
       <div className="feed-bottom investment-footer"><BottomNav onNavigate={onNavigate} /><div className="home-indicator"><div /></div></div>
 
+      {isSearchOpen && <div className="investment-add-layer">
+        <button type="button" className="investment-add-backdrop" aria-label="종목 검색 닫기" onClick={() => setIsSearchOpen(false)} />
+        <section className="investment-add-sheet investment-explore-sheet" role="dialog" aria-modal="true" aria-labelledby="investment-search-title">
+          <div className="investment-add-grabber" aria-hidden="true" />
+          <header><div><h2 id="investment-search-title">종목 검색</h2><span>관심 등록 없이 차트 보기</span></div><button type="button" aria-label="닫기" onClick={() => setIsSearchOpen(false)}><Icon kind="close" /></button></header>
+          <label className="investment-search-field"><Icon kind="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="종목명 또는 종목코드" autoFocus /></label>
+          <div className="investment-search-results investment-explore-results">{searchResults.map((stock) => {
+            const watched = watchIds.includes(stock.id)
+            return <button type="button" className={stock.id === selected.id ? 'is-current' : ''} aria-label={`${stock.name} 차트 보기`} onClick={() => { setSelectedId(stock.id); setIsSearchOpen(false); setQuery('') }} key={stock.id}><span><strong>{stock.name}</strong><small>{stock.code} · KRX</small></span><span className="investment-search-quote"><strong>{formatPrice(stock.price)}</strong><small className={tone(stock)}>{formatChangeRate(stock.changeRate)}</small></span><em>{watched ? '관심 종목' : '차트 보기'}</em></button>
+          })}{searchResults.length === 0 && <p className="investment-search-empty">일치하는 종목이 없습니다.</p>}</div>
+        </section>
+      </div>}
+
       {isAddOpen && <div className="investment-add-layer">
         <button type="button" className="investment-add-backdrop" aria-label="종목 추가 닫기" onClick={() => setIsAddOpen(false)} />
         <section className="investment-add-sheet" role="dialog" aria-modal="true" aria-labelledby="investment-add-title">
           <div className="investment-add-grabber" aria-hidden="true" />
-          <header><h2 id="investment-add-title">관심 종목 추가</h2><button type="button" aria-label="닫기" onClick={() => setIsAddOpen(false)}><Icon kind="close" /></button></header>
+          <header><div><h2 id="investment-add-title">관심 종목 추가</h2><span>{watchIds.length}개 선택됨</span></div><button type="button" aria-label="닫기" onClick={() => setIsAddOpen(false)}><Icon kind="close" /></button></header>
           <label className="investment-search-field"><Icon kind="search" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="종목명 또는 종목코드" autoFocus /></label>
           <div className="investment-search-results">{searchResults.map((stock) => {
             const watched = watchIds.includes(stock.id)
-            return <article key={stock.id}><span><strong>{stock.name}</strong><small>{stock.code} · KRX</small></span><span className="investment-search-quote"><strong>{formatPrice(stock.price)}</strong><small className={tone(stock)}>{formatChangeRate(stock.changeRate)}</small></span><button type="button" disabled={watched} onClick={() => addStock(stock.id)}>{watched ? '추가됨' : '추가'}</button></article>
+            return <article key={stock.id}><span><strong>{stock.name}</strong><small>{stock.code} · KRX</small></span><span className="investment-search-quote"><strong>{formatPrice(stock.price)}</strong><small className={tone(stock)}>{formatChangeRate(stock.changeRate)}</small></span><button type="button" className={watched ? 'is-selected' : ''} aria-pressed={watched} aria-label={watched ? `${stock.name} 관심 종목에서 제거` : `${stock.name} 관심 종목에 추가`} onClick={() => toggleStockFromAddSheet(stock.id)}><span aria-hidden="true">{watched ? '×' : '+'}</span>{watched ? '제거' : '추가'}</button></article>
           })}{searchResults.length === 0 && <p className="investment-search-empty">일치하는 종목이 없습니다.</p>}</div>
+          <footer className="investment-add-actions"><span>관심 종목 <strong>{watchIds.length}</strong>개</span><button type="button" onClick={() => setIsAddOpen(false)}>완료</button></footer>
         </section>
       </div>}
       {removed && <div className="investment-undo" role="status"><span>{STOCK_BY_ID[removed.id].name} 관심 종목을 삭제했어요</span><button type="button" onClick={undoRemove}>되돌리기</button></div>}
