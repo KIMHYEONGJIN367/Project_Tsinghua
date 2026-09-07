@@ -2231,6 +2231,36 @@ body:has(.chat-list-screen) {
   font-weight: 600;
 }
 
+.chat-confirm-effects {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 0;
+  padding: 11px 12px;
+  border: 1px solid #eee7e2;
+  border-radius: 12px;
+  background: #faf8f6;
+  color: #625a58;
+  font-size: 8.5px;
+  line-height: 1.45;
+  list-style: none;
+}
+
+.chat-confirm-effects li {
+  position: relative;
+  padding-left: 11px;
+}
+
+.chat-confirm-effects li::before {
+  position: absolute;
+  top: .55em;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #b8323c;
+  content: '';
+}
+
 .chat-confirm-actions {
   display: flex;
   gap: 8px;

@@ -27,6 +27,7 @@ import {
   formatReturn,
   formatWon,
   initialOpenOrders,
+  instruments,
   type OpenOrder,
   type OpenOrderUpdate,
   type TradeEntryIntent,
@@ -244,6 +245,12 @@ type ChatRoom = {
   competitionMembership?: CompetitionMembership
   mulligansUsed?: number
   accountReset?: boolean
+  forfeitSnapshot?: {
+    recordedAt: string
+    nav: number
+    returnValue: number
+    holdings: string[]
+  }
   recentHistory?: ChatHistoryItem[]
   image: string
 }
@@ -1156,7 +1163,7 @@ function ChatListScreen({ onNavigate, rooms, onRoomsChange, onOpenRoom, onForfei
           <section className="chat-confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="chat-confirm-title" aria-describedby="chat-confirm-description">
             <span className="chat-confirm-badge">{pendingLeaveRequiresHostTransfer ? '방장 위임 필수' : pendingLeaveIsForfeit ? '대회' : '라운지'}</span>
             <h2 id="chat-confirm-title">{pendingLeaveRequiresHostTransfer ? '다음 방장을 정해 주세요' : `${pendingLeaveAction} 하시겠어요?`}</h2>
-            <p id="chat-confirm-description"><strong>{pendingLeaveRoom.title}</strong>{pendingLeaveRequiresHostTransfer ? `의 방장을 넘긴 뒤 ${pendingLeaveIsForfeit ? '포기할' : '나갈'} 수 있어요.` : pendingLeaveIsForfeit ? '에서 포기하면 모든 포기자와 공동 꼴등으로 기록되고 라운지에는 관망자로 남습니다.' : '에서 나가면 대화 목록에서 사라집니다.'}</p>
+            <p id="chat-confirm-description"><strong>{pendingLeaveRoom.title}</strong>{pendingLeaveRequiresHostTransfer ? `의 방장을 넘긴 뒤 ${pendingLeaveIsForfeit ? '포기할' : '나갈'} 수 있어요.` : pendingLeaveIsForfeit ? '에서 포기하면 즉시 참가가 끝나고 라운지에는 관망자로 남습니다.' : '에서 나가면 대화 목록에서 사라집니다.'}</p>
             {pendingLeaveRequiresHostTransfer && (
               <fieldset className="host-successor-fieldset">
                 <legend>{pendingLeaveIsForfeit ? '현재 대회 참가자 중 선택' : '현재 라운지 멤버 중 선택'}</legend>
@@ -1170,6 +1177,14 @@ function ChatListScreen({ onNavigate, rooms, onRoomsChange, onOpenRoom, onForfei
                 ))}
                 {successorCandidates.length === 0 && <p>위임할 다른 멤버가 없어 지금은 {pendingLeaveAction}할 수 없어요.</p>}
               </fieldset>
+            )}
+            {pendingLeaveIsForfeit && (
+              <ul className="chat-confirm-effects" aria-label="포기 처리 내용">
+                <li>미체결 주문을 모두 즉시 취소해요</li>
+                <li>현재 NAV와 보유 내역을 동결해 기록해요</li>
+                <li>실시간·최종 순위에서 제외되고 공동 꼴등 처리돼요</li>
+                <li>채팅·순위·체결·공유 잔고는 계속 볼 수 있어요</li>
+              </ul>
             )}
             <div className="chat-confirm-actions">
               <button type="button" className="chat-confirm-cancel" onClick={() => { setPendingLeaveRoom(null); setPendingHostSuccessor('') }}>취소</button>
@@ -1239,6 +1254,7 @@ function ChatRoomScreen({
   const canSendMessage = messageDraft.trim().length > 0
   const isActiveCompetition = room.competitionState === 'active'
   const isCompetitionParticipant = isActiveCompetition && room.competitionMembership === 'participant'
+  const isCompetitionSpectator = isActiveCompetition && room.competitionMembership === 'forfeited'
   const competitionAtCapacity = Boolean(room.competition && isCompetitionAtCapacity(room.competition))
   const canJoinCompetition = Boolean(room.competition && room.competitionMembership === 'eligible' && isCompetitionJoinOpen(room.competition))
   const joinClosedLabel = competitionAtCapacity ? '대회 참가 정원 마감' : '대회 참가 마감'
@@ -1252,14 +1268,15 @@ function ChatRoomScreen({
   const competitionEndLabel = room.competition ? formatCompetitionDate(room.competition.endDate).replace(/^\d+년\s*/, '') : ''
 
   useEffect(() => {
-    if (isCompetitionParticipant) return
-    setIsTradeSheetOpen(false)
-    setTradeEntryIntent(null)
-    setIsPortfolioSheetOpen(false)
-    setIsTradeHistorySheetOpen(false)
-    setIsRankingSheetOpen(false)
-    setIsMulliganConfirmOpen(false)
-  }, [isCompetitionParticipant, room.id])
+    if (!isCompetitionParticipant) {
+      setIsTradeSheetOpen(false)
+      setTradeEntryIntent(null)
+      setIsPortfolioSheetOpen(false)
+      setIsTradeHistorySheetOpen(false)
+      setIsMulliganConfirmOpen(false)
+    }
+    if (!isCompetitionParticipant && !isCompetitionSpectator) setIsRankingSheetOpen(false)
+  }, [isCompetitionParticipant, isCompetitionSpectator, room.id])
 
   useEffect(() => {
     if (roomTimeline.length > 0) {
@@ -1516,7 +1533,12 @@ function ChatRoomScreen({
         {isActiveCompetition && room.competitionMembership === 'forfeited' && (
           <section className="competition-context-card is-forfeited">
             <span className="competition-context-icon"><CompetitionTrophyIcon /></span>
-            <div><small>포기 · 관망 중</small><strong>라운지에는 그대로 남아 있어요</strong><p>모든 포기자와 공동 꼴등이며 매매는 할 수 없습니다.</p></div>
+            <div>
+              <small>포기 · 관망 중</small>
+              <strong>{room.forfeitSnapshot ? `내 기록 NAV ${formatWon(room.forfeitSnapshot.nav)}로 동결` : '내 기록은 포기 시점으로 동결됐어요'}</strong>
+              <p>내 순위와 매매만 제외되고 채팅·체결·공유 잔고는 계속 볼 수 있어요.</p>
+            </div>
+            <button type="button" onClick={openRankingSheet}>순위 보기</button>
           </section>
         )}
         {room.competitionState === 'chat-only' && room.kind === 'group' && room.isHost && (
@@ -1760,8 +1782,8 @@ function ChatRoomScreen({
       {isCompetitionParticipant && isTradeHistorySheetOpen && room.competition && (
         <TradeHistorySheet competitionTitle={room.competition.title} periodLabel={`${formatCompetitionDate(room.competition.startDate)} – ${formatCompetitionDate(room.competition.endDate)}`} mulligansUsed={mulligansUsed} onClose={returnToPortfolioFromTradeHistory} />
       )}
-      {isCompetitionParticipant && isRankingSheetOpen && (
-        <RankingSheet viewCount={viewCounts.ranking} onClose={() => setIsRankingSheetOpen(false)} />
+      {(isCompetitionParticipant || isCompetitionSpectator) && isRankingSheetOpen && (
+        <RankingSheet isSpectator={isCompetitionSpectator} viewCount={viewCounts.ranking} onClose={() => setIsRankingSheetOpen(false)} />
       )}
       {isCompetitionHostSheetOpen && room.kind === 'group' && room.isHost && (
         <CompetitionHostSheet
@@ -2912,7 +2934,7 @@ export default function App() {
       meta: '방금',
     } : item))
     appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'join-event', roomKind: '대회', sentAt: getCurrentChatTime() })
-    addCompetitionHomeCard(room, joinedCompetition, '방금 참가')
+    addCompetitionHomeCard(room, joinedCompetition, '참가 중')
     setCompetitionNotice(`${room.competition.initialCapital.toLocaleString('ko-KR')}원의 초기자본으로 대회에 참여했어요.`)
   }
 
@@ -2936,17 +2958,40 @@ export default function App() {
   const forfeitRoomCompetition = (room: ChatRoom, successorName?: string) => {
     if (!room.competition || room.competitionMembership !== 'participant') return
     if (room.isHost && !successorName) return
+    const usesExistingPortfolioMock = room.competition.id === 'competition-ssangddi' && !room.accountReset
+    const snapshotNav = usesExistingPortfolioMock ? TOTAL_ASSET : room.competition.initialCapital
+    const snapshotReturn = usesExistingPortfolioMock ? TOTAL_RETURN : 0
+    const snapshotHoldings = usesExistingPortfolioMock
+      ? instruments
+          .filter((instrument) => (instrument.longQuantity ?? 0) > 0 || (instrument.shortQuantity ?? 0) > 0)
+          .map((instrument) => `${instrument.name} ${instrument.longQuantity ? `Long ${instrument.longQuantity}주` : `Short ${instrument.shortQuantity}주`}`)
+      : ['현금 100%']
+    const recordedAt = new Intl.DateTimeFormat('ko-KR', {
+      timeZone: 'Asia/Seoul',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    }).format(new Date())
     setChatRoomItems((currentRooms) => currentRooms.map((item) => item.id === room.id ? {
       ...item,
       isHost: room.isHost ? false : item.isHost,
       competitionMembership: 'forfeited',
+      forfeitSnapshot: {
+        recordedAt,
+        nav: snapshotNav,
+        returnValue: snapshotReturn,
+        holdings: snapshotHoldings,
+      },
       detail: '대회를 포기하고 관망 중이에요',
       meta: '방금',
     } : item))
+    setOpenOrders([])
     setInvestRoomItems((currentRooms) => currentRooms.filter((item) => item.title !== room.competition?.title))
     if (successorName) appendRoomTimeline(room.id, { id: crypto.randomUUID(), kind: 'competition-event', eventType: 'host-transferred', title: room.title, detail: `김형진님이 ${successorName}님에게 방장을 위임했어요.`, sentAt: getCurrentChatTime() })
     appendRoomTimeline(room.id, { id: crypto.randomUUID(), kind: 'competition-event', eventType: 'forfeited', title: room.competition.title, detail: '김형진님이 대회를 포기하고 관망으로 전환했어요. 모든 포기자는 공동 꼴등입니다.', sentAt: getCurrentChatTime() })
-    setCompetitionNotice(successorName ? `${successorName}님에게 방장을 넘기고 대회를 포기했어요.` : '대회를 포기했어요. 모든 포기자와 공동 꼴등으로 라운지에 남습니다.')
+    setCompetitionNotice(successorName ? `${successorName}님에게 방장을 넘기고 대회를 포기했어요. 미체결 주문을 취소하고 기록을 동결했습니다.` : '대회를 포기했어요. 미체결 주문을 취소하고 NAV·보유 내역을 동결했습니다.')
   }
 
   const activeRoom = chatRoomItems.find((room) => room.id === activeRoomId) ?? chatRoomItems[0]

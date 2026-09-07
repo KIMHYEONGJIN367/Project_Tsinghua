@@ -368,18 +368,22 @@ const leaderboard = [
   { rank: 4, name: '조진만', returnValue: -2.6, change: '—' },
 ]
 
-export function RankingSheet({ viewCount, onClose }: { viewCount: number; onClose: () => void }) {
+export function RankingSheet({ viewCount, isSpectator = false, onClose }: { viewCount: number; isSpectator?: boolean; onClose: () => void }) {
+  const visibleLeaderboard = isSpectator
+    ? leaderboard.filter((entry) => !entry.isMe).map((entry, index) => ({ ...entry, rank: index + 1 }))
+    : leaderboard
+
   return (
     <SwipeSheet edge="top" label="대회 순위" onClose={onClose}>
       <header className="ranking-sheet-header">
         <span><strong>대회 순위</strong><small>NAV 기준 · 실시간 반영</small></span>
-        <span><strong>나의 순위 {CURRENT_RANK}위</strong><small>오늘 {viewCount}번째 확인</small></span>
+        <span><strong>{isSpectator ? '관망 중 · 내 순위 제외' : `나의 순위 ${CURRENT_RANK}위`}</strong><small>오늘 {viewCount}번째 확인</small></span>
       </header>
 
       <div className="ranking-social-note">👀 순위를 확인 중이라는 사실이 대회방에 표시돼요.</div>
 
       <ol className="ranking-list">
-        {leaderboard.map((entry) => (
+        {visibleLeaderboard.map((entry) => (
           <li className={entry.isMe ? 'is-me' : ''} key={entry.name}>
             <strong className="ranking-position">{entry.rank}</strong>
             <span className="ranking-avatar" aria-hidden="true">{entry.name.slice(0, 1)}</span>
