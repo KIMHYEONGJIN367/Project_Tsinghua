@@ -68,16 +68,14 @@ type ChatCompetitionState = 'scheduled' | 'active' | 'ended' | 'invalidated' | '
 type MyPanelKey = 'profile' | 'grade' | 'records' | 'notifications' | 'friends' | 'devices' | 'visibility' | 'support'
 
 const investmentGradeTiers = [
-  { name: '주린이', minimum: 0 },
-  { name: '개미', minimum: 115 },
-  { name: '불개미', minimum: 135 },
-  { name: '슈퍼개미', minimum: 160 },
-  { name: '전업투자자', minimum: 190 },
-  { name: '애널리스트', minimum: 225 },
-  { name: '펀드매니저', minimum: 265 },
-  { name: '기관', minimum: 310 },
-  { name: '외인', minimum: 360 },
-  { name: '투자 거장', minimum: 420 },
+  { name: '주린이', minimum: 0, description: '이제 막 시작했어요. 매수와 매도 버튼을 누르기 전 한 번 더 확인하는 단계예요.' },
+  { name: '개미', minimum: 115, description: '뉴스 한 줄에도 심장이 움직이지만, 내 종목을 직접 고르기 시작했어요.' },
+  { name: '슈퍼개미', minimum: 150, description: '남의 말보다 나만의 매매 원칙이 조금씩 생겼어요.' },
+  { name: '전업투자자', minimum: 190, description: '장이 열리기 전에 오늘의 계획부터 세워요.' },
+  { name: '애널리스트', minimum: 230, description: '느낌보다 숫자와 근거로 투자 아이디어를 설명해요.' },
+  { name: '펀드매니저', minimum: 275, description: '한 종목보다 포트폴리오 전체의 균형을 봐요.' },
+  { name: '외인', minimum: 330, description: '움직일 때마다 라운지 사람들이 이유를 궁금해하는 단계예요.' },
+  { name: '워런 버핏', minimum: 420, description: '기다림까지 전략으로 쓰는 천투의 최종 단계예요.' },
 ] as const
 
 type SocialViewKind = 'balance' | 'ranking'
@@ -231,14 +229,14 @@ const investRooms = [
 ]
 
 const friends: FriendProfile[] = [
-  { id: 'kim-young-gyu', tiantouId: '@younggyu', name: '김영규', grade: '등급 불개미', returnValue: '+314.2%' },
+  { id: 'kim-young-gyu', tiantouId: '@younggyu', name: '김영규', grade: '등급 슈퍼개미', returnValue: '+314.2%' },
   { id: 'jang-woo-jin', tiantouId: '@woojin', name: '장우진', grade: '등급 애널리스트', returnValue: '+28.4%' },
   { id: 'kim-hyeong-jin', tiantouId: '@hyeongjin367', name: '김형진', grade: '등급 개미', returnValue: '—' },
-  { id: 'jo-jin-man', tiantouId: '@jinman', name: '조진만', grade: '등급 기관', returnValue: '—' },
+  { id: 'jo-jin-man', tiantouId: '@jinman', name: '조진만', grade: '등급 펀드매니저', returnValue: '—' },
 ]
 
 const friendDirectory: FriendProfile[] = [
-  { id: 'lee-min-su', tiantouId: '@minsu77', name: '이민수', grade: '등급 가치투자자', returnValue: '+18.7%' },
+  { id: 'lee-min-su', tiantouId: '@minsu77', name: '이민수', grade: '등급 전업투자자', returnValue: '+18.7%' },
   { id: 'park-seo-jun', tiantouId: '@seojunpark', name: '박서준', grade: '등급 개미', returnValue: '+4.2%' },
 ]
 
@@ -2317,7 +2315,7 @@ function MySettingSwitch({ checked, label, onChange }: { checked: boolean; label
   )
 }
 
-function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: ScreenKey) => void; onOpenCompetition: (title: string) => void }) {
+function MyScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
   const investmentIndex = 238
   const gradeIndex = investmentGradeTiers.reduce((foundIndex, grade, index) => investmentIndex >= grade.minimum ? index : foundIndex, 0)
   const currentGrade = investmentGradeTiers[Math.max(gradeIndex, 0)]
@@ -2353,7 +2351,7 @@ function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: Scre
   const panelTitle: Record<MyPanelKey, string> = {
     profile: '프로필 편집',
     grade: '투자 등급',
-    records: '내 대회 기록',
+    records: '대회 기록',
     notifications: '알림',
     friends: '친구 및 차단',
     devices: '계정과 기기',
@@ -2361,15 +2359,13 @@ function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: Scre
     support: '고객센터 · 약관',
   }
 
-  const competitions = [
-    { title: '쌍띠 투자대회', state: '진행 중', rank: '현재 2위', returnValue: '+28.4%', tone: 'is-gain', scoreDelta: '정산 전', scoreTone: '', image: investRoom },
-    { title: '카카오 투자대회', state: '종료', rank: '최종 5위', returnValue: '-15.8%', tone: 'is-loss', scoreDelta: '-13점', scoreTone: 'is-loss', image: friendsRoom },
-  ]
-
-  const scoreHistory = [
-    { title: '카카오 투자대회', detail: '30일 · 6명 · 최종 5위', score: '-13', tone: 'is-loss' },
-    { title: '반도체 실전 리그', detail: '90일 · 8명 · 최종 2위', score: '+29', tone: 'is-gain' },
-    { title: '개미들의 반란', detail: '14일 · 5명 · 최종 3위', score: '+7', tone: 'is-gain' },
+  const competitionRecords = [
+    { title: '카카오 투자대회', period: '2026.08.01 – 08.30', duration: '30일', rank: '5위', returnValue: '-15.8%', returnTone: 'is-loss', participants: '6명', scoreDelta: '-13점', scoreTone: 'is-loss' },
+    { title: '반도체 실전 리그', period: '2026.05.30 – 08.27', duration: '90일', rank: '2위', returnValue: '+31.7%', returnTone: 'is-gain', participants: '8명', scoreDelta: '+29점', scoreTone: 'is-gain' },
+    { title: '개미들의 반란', period: '2026.05.01 – 05.14', duration: '14일', rank: '3위', returnValue: '+8.6%', returnTone: 'is-gain', participants: '5명', scoreDelta: '+7점', scoreTone: 'is-gain' },
+    { title: '가치투자 챌린지', period: '2026.03.01 – 04.29', duration: '60일', rank: '1위', returnValue: '+22.1%', returnTone: 'is-gain', participants: '10명', scoreDelta: '+35점', scoreTone: 'is-gain' },
+    { title: '봄맞이 주식대회', period: '2026.02.01 – 02.14', duration: '14일', rank: '6위', returnValue: '-4.2%', returnTone: 'is-loss', participants: '7명', scoreDelta: '-11점', scoreTone: 'is-loss' },
+    { title: '새해 첫 수익', period: '2026.01.05 – 01.11', duration: '7일', rank: '2위', returnValue: '+5.4%', returnTone: 'is-gain', participants: '4명', scoreDelta: '+6점', scoreTone: 'is-gain' },
   ]
 
   const renderPanelContent = () => {
@@ -2394,17 +2390,21 @@ function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: Scre
 
     if (activePanel === 'records') {
       return (
-        <div className="my-record-list">
-          {competitions.map((competition) => (
-            <button type="button" key={competition.title} onClick={() => { setActivePanel(null); onOpenCompetition(competition.title) }}>
-              <img src={competition.image} alt="" width="42" height="42" />
-              <span><strong>{competition.title}</strong><small>{competition.state} · {competition.rank}</small></span>
-              <span className="my-competition-result">
-                <b className={competition.tone}>{competition.returnValue}</b>
-                <em className={competition.scoreTone}>{competition.scoreDelta}</em>
-              </span>
-            </button>
-          ))}
+        <div className="my-record-panel">
+          <p>종료된 대회의 결과와 확정된 투자지수 변화를 모아봤어요.</p>
+          <div className="my-record-list">
+            {competitionRecords.map((competition) => (
+              <article className="my-record-card" key={`${competition.title}-${competition.period}`}>
+                <header><strong>{competition.title}</strong><b className={competition.scoreTone}>{competition.scoreDelta}</b></header>
+                <p>{competition.period} · {competition.duration}</p>
+                <dl>
+                  <div><dt>최종 순위</dt><dd>{competition.rank}</dd></div>
+                  <div><dt>최종 수익률</dt><dd className={competition.returnTone}>{competition.returnValue}</dd></div>
+                  <div><dt>참가 인원</dt><dd>{competition.participants}</dd></div>
+                </dl>
+              </article>
+            ))}
+          </div>
         </div>
       )
     }
@@ -2413,29 +2413,16 @@ function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: Scre
       return (
         <div className="my-grade-detail">
           <section className="my-grade-detail-hero">
-            <div className="my-grade-seal" aria-hidden="true"><small>LEVEL 06</small><strong>A</strong><span>PRO</span></div>
             <div>
-              <small>나의 투자 등급</small>
+              <small>현재 나의 투자 등급</small>
               <strong>{currentGrade.name}</strong>
-              <span>투자지수 {investmentIndex}</span>
+              <span>투자지수 {investmentIndex} · {currentGrade.description}</span>
             </div>
           </section>
 
           <section className="my-grade-detail-progress">
             <div><strong>{nextGrade ? `다음 ${nextGrade.name}` : '최고 등급'}</strong><span>{nextGrade ? `${pointsToNextGrade}점 남음` : `${investmentIndex}점`}</span></div>
             <span className="my-grade-progress-track"><i style={{ width: `${Math.max(0, Math.min(100, gradeProgress))}%` }} /></span>
-          </section>
-
-          <p className="my-grade-disclaimer">천투 게임 내 등급이며 실제 금융 자격이나 투자 전문성을 인증하지 않아요.</p>
-
-          <section className="my-score-history">
-            <h3>최근 점수 변화</h3>
-            {scoreHistory.map((history) => (
-              <div key={history.title}>
-                <span><strong>{history.title}</strong><small>{history.detail}</small></span>
-                <b className={history.tone}>{history.score}점</b>
-              </div>
-            ))}
           </section>
 
           <section className="my-grade-method">
@@ -2450,11 +2437,13 @@ function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: Scre
             {investmentGradeTiers.map((grade, index) => (
               <div key={grade.name} className={grade.name === currentGrade.name ? 'is-current' : ''}>
                 <span>{String(index + 1).padStart(2, '0')}</span>
-                <strong>{grade.name}</strong>
-                <small>{index === investmentGradeTiers.length - 1 ? `${grade.minimum}점 이상` : `${grade.minimum}~${investmentGradeTiers[index + 1].minimum - 1}점`}</small>
+                <p><strong>{grade.name}</strong><small>{grade.description}</small></p>
+                <em>{index === investmentGradeTiers.length - 1 ? `${grade.minimum}점+` : `${grade.minimum}~${investmentGradeTiers[index + 1].minimum - 1}점`}</em>
               </div>
             ))}
           </section>
+
+          <p className="my-grade-disclaimer">천투 게임을 위한 재미 요소예요. 실제 금융 자격이나 전문성, 인물의 보증·제휴를 뜻하지 않아요.</p>
         </div>
       )
     }
@@ -2530,36 +2519,26 @@ function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: Scre
           <button type="button" className="my-profile-edit" aria-label="프로필 편집" onClick={openProfileEditor}><MyIcon kind="edit" /></button>
         </section>
 
-        <button type="button" className="my-performance-card" onClick={() => setActivePanel('grade')} aria-label={`${currentGrade.name}, 투자지수 ${investmentIndex}. 등급 자세히 보기`}>
-          <span className="my-performance-glow" aria-hidden="true" />
-          <span className="my-performance-heading"><small>MY PERFORMANCE</small><em>천투 게임 등급 <MyIcon kind="chevron" /></em></span>
+        <section className="my-performance-card" aria-label={`${currentGrade.name}, 투자지수 ${investmentIndex}`}>
+          <span className="my-performance-heading"><small>나의 투자 성과</small><button type="button" className="my-grade-info-button" onClick={() => setActivePanel('grade')}>천투 게임 등급 <MyIcon kind="chevron" /></button></span>
           <span className="my-return-overview">
             <span><small>누적 수익률</small><strong>+12.4%</strong></span>
             <span><small>월간</small><strong>+4.8%</strong></span>
             <span><small>일간</small><strong className="is-loss">-0.7%</strong></span>
           </span>
           <span className="my-grade-overview">
-            <span className="my-grade-seal" aria-hidden="true"><small>LEVEL 06</small><strong>A</strong><span>PRO</span></span>
-            <span className="my-grade-copy"><small>투자 등급</small><strong>{currentGrade.name}</strong><em>투자지수 {investmentIndex}</em></span>
+            <span className="my-grade-copy"><small>현재 등급</small><strong>{currentGrade.name}</strong><em>투자지수 {investmentIndex}</em></span>
           </span>
           <span className="my-grade-progress-copy"><strong>{nextGrade ? `다음 ${nextGrade.name}` : '최고 등급'}</strong><em>{nextGrade ? `${pointsToNextGrade}점 남음` : `${investmentIndex}점`}</em></span>
           <span className="my-grade-progress-track"><i style={{ width: `${Math.max(0, Math.min(100, gradeProgress))}%` }} /></span>
-        </button>
+        </section>
 
-        <section className="my-section">
-          <header><h2>최근 대회</h2><button type="button" onClick={() => setActivePanel('records')}>전체 기록</button></header>
-          <div className="my-competition-list">
-            {competitions.map((competition) => (
-              <button type="button" key={competition.title} onClick={() => onOpenCompetition(competition.title)}>
-                <img src={competition.image} alt="" width="42" height="42" />
-                <span><strong>{competition.title}</strong><small>{competition.state} · {competition.rank}</small></span>
-                <span className="my-competition-result">
-                  <b className={competition.tone}>{competition.returnValue}</b>
-                  <em className={competition.scoreTone}>{competition.scoreDelta}</em>
-                </span>
-              </button>
-            ))}
-          </div>
+        <section className="my-section my-record-entry-section">
+          <button type="button" className="my-record-entry" onClick={() => setActivePanel('records')}>
+            <span className="my-menu-icon"><MyIcon kind="trophy" /></span>
+            <span><strong>대회 기록</strong><small>기간 · 최종 순위 · 수익률 · 점수</small></span>
+            <MyIcon kind="chevron" />
+          </button>
         </section>
 
         <section className="my-section my-settings-section">
@@ -3089,12 +3068,6 @@ export default function App() {
 
   const activeRoom = chatRoomItems.find((room) => room.id === activeRoomId) ?? chatRoomItems[0]
 
-  const openMyCompetition = (title: string) => {
-    const room = chatRoomItems.find((item) => item.kind === 'group' && item.title === title)
-    if (room) openChatRoom(room)
-    else navigate('chat-list')
-  }
-
   if (screen === 'competition-join') {
     const initialCode = typeof window === 'undefined' ? '' : new URLSearchParams(window.location.search).get('invite') ?? ''
     return <CompetitionJoinScreen initialCode={initialCode} onBack={() => navigate(utilityReturnScreen)} onJoin={joinCompetition} />
@@ -3144,7 +3117,7 @@ export default function App() {
       />
     )
   }
-  if (screen === 'my') return <MyScreen onNavigate={navigate} onOpenCompetition={openMyCompetition} />
+  if (screen === 'my') return <MyScreen onNavigate={navigate} />
   if (screen === 'invest') return <InvestmentScreen onNavigate={navigate} />
   if (screen === 'splash') return <SplashScreen />
   return (

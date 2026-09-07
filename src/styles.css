@@ -5864,68 +5864,52 @@ body:has(.my-screen) {
   position: relative;
   display: flex;
   width: calc(100% - 32px);
-  overflow: hidden;
   flex-direction: column;
-  gap: 12px;
+  gap: 11px;
   margin: 10px 16px 0;
   padding: 15px 16px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #eadbd6;
   border-radius: 20px;
-  background: linear-gradient(145deg, #18181b 0%, #272124 56%, #34252a 100%);
-  box-shadow: 0 12px 30px rgba(54, 37, 40, 0.18);
-  color: #ffffff;
-  font-family: inherit;
+  background: linear-gradient(145deg, #fff8f5 0%, #ffffff 58%, #fffaf5 100%);
+  box-shadow: 0 10px 26px rgba(74, 53, 48, 0.08);
+  color: #202124;
   text-align: left;
-}
-
-.my-performance-card:active {
-  transform: scale(0.992);
-}
-
-.my-performance-glow {
-  position: absolute;
-  top: -75px;
-  right: -48px;
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(211, 160, 86, 0.25), rgba(184, 50, 60, 0) 68%);
-  pointer-events: none;
 }
 
 .my-performance-heading,
 .my-grade-progress-copy {
-  position: relative;
-  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
 .my-performance-heading > small {
-  color: #d9c29b;
-  font-size: 7px;
+  color: #6d5f5a;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.18em;
 }
 
-.my-performance-heading > em {
+.my-grade-info-button {
   display: flex;
   align-items: center;
-  gap: 2px;
-  color: #c8bdba;
-  font-size: 7px;
-  font-style: normal;
+  gap: 3px;
+  min-height: 28px;
+  padding: 5px 8px 5px 10px;
+  border: 1px solid #edd9d6;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #a92f3a;
+  font-family: inherit;
+  font-size: 8px;
+  font-weight: 650;
 }
 
-.my-performance-heading .my-line-icon {
+.my-grade-info-button .my-line-icon {
   width: 10px;
   height: 10px;
 }
 
 .my-return-overview {
-  position: relative;
-  z-index: 1;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 62px 62px;
   align-items: end;
@@ -5940,16 +5924,16 @@ body:has(.my-screen) {
 
 .my-return-overview > span + span {
   padding-left: 12px;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  border-left: 1px solid #eee2de;
 }
 
 .my-return-overview small {
-  color: #aaa2a0;
-  font-size: 7px;
+  color: #8e817d;
+  font-size: 8px;
 }
 
 .my-return-overview strong {
-  color: #fa7f86;
+  color: #b8323c;
   font-size: 13px;
   font-weight: 700;
   line-height: 1;
@@ -5961,50 +5945,12 @@ body:has(.my-screen) {
 }
 
 .my-return-overview strong.is-loss {
-  color: #8fb7f2;
+  color: #315fa4;
 }
 
 .my-grade-overview {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
-  padding-top: 11px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.my-grade-seal {
-  display: flex;
-  width: 54px;
-  height: 54px;
-  flex: 0 0 auto;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  border: 1px solid rgba(225, 184, 111, 0.78);
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 28%, #605046, #282326 68%);
-  box-shadow: inset 0 0 0 3px #282326, inset 0 0 0 4px rgba(225, 184, 111, 0.46), 0 5px 14px rgba(0, 0, 0, 0.2);
-  color: #f0d39b;
-}
-
-.my-grade-seal small,
-.my-grade-seal span {
-  font-size: 5px;
-  font-weight: 700;
-  letter-spacing: 0.13em;
-  line-height: 1;
-}
-
-.my-grade-seal strong {
-  margin: 1px 0;
-  color: #ffffff;
-  font-family: Georgia, serif;
-  font-size: 21px;
-  line-height: 0.92;
+  padding-top: 10px;
+  border-top: 1px solid #eee2de;
 }
 
 .my-grade-copy {
@@ -6017,13 +5963,13 @@ body:has(.my-screen) {
 
 .my-grade-copy small {
   grid-column: 1 / -1;
-  color: #aaa2a0;
-  font-size: 7px;
+  color: #8e817d;
+  font-size: 8px;
 }
 
 .my-grade-copy strong {
   overflow: hidden;
-  color: #ffffff;
+  color: #2f2927;
   font-size: 17px;
   font-weight: 700;
   text-overflow: ellipsis;
@@ -6031,7 +5977,7 @@ body:has(.my-screen) {
 }
 
 .my-grade-copy em {
-  color: #d9c29b;
+  color: #a92f3a;
   font-size: 9px;
   font-style: normal;
   font-weight: 650;
@@ -6049,30 +5995,27 @@ body:has(.my-screen) {
 }
 
 .my-grade-progress-copy strong {
-  color: #d9d3d1;
+  color: #716763;
 }
 
 .my-grade-progress-copy em {
-  color: #d9c29b;
+  color: #a92f3a;
 }
 
 .my-grade-progress-track {
-  position: relative;
-  z-index: 1;
   display: block;
   width: 100%;
   height: 5px;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
+  background: #eee4e1;
 }
 
 .my-grade-progress-track > i {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #b8323c, #ef807e 55%, #e2bd77);
-  box-shadow: 0 0 10px rgba(226, 189, 119, 0.26);
+  background: linear-gradient(90deg, #a82f39, #df6a6e);
 }
 
 .my-section {
@@ -6101,6 +6044,48 @@ body:has(.my-screen) {
   color: #b8323c;
   font-size: 9px;
   font-weight: 600;
+}
+
+.my-record-entry-section {
+  margin-top: 14px;
+}
+
+.my-record-entry {
+  display: grid;
+  width: 100%;
+  min-height: 58px;
+  grid-template-columns: 34px minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border: 1px solid #eee7db;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #202124;
+  text-align: left;
+}
+
+.my-record-entry > span:nth-child(2) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.my-record-entry strong {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.my-record-entry small {
+  color: #918986;
+  font-size: 8px;
+}
+
+.my-record-entry > .my-line-icon {
+  width: 14px;
+  height: 14px;
+  color: #aaa19e;
 }
 
 .my-competition-list,
@@ -6306,9 +6291,11 @@ body:has(.my-screen) {
 
 .my-sheet {
   position: relative;
+  display: flex;
   width: 100%;
   max-height: 74%;
   overflow: hidden;
+  flex-direction: column;
   border-radius: 24px 24px 0 0;
   background: #ffffff;
   box-shadow: 0 -18px 48px rgba(60, 44, 42, 0.16);
@@ -6356,7 +6343,8 @@ body:has(.my-screen) {
 }
 
 .my-sheet-content {
-  max-height: calc(100% - 61px);
+  min-height: 0;
+  flex: 1 1 auto;
   overflow-y: auto;
   padding: 14px 16px 24px;
 }
@@ -6434,33 +6422,93 @@ body:has(.my-screen) {
 }
 
 .my-record-list {
-  overflow: hidden;
-  border: 1px solid #eee7db;
-  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.my-record-summary {
+.my-record-panel > p {
+  margin: 0 0 12px;
+  color: #817976;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.my-record-card {
+  padding: 12px 13px;
+  border: 1px solid #eee7db;
+  border-radius: 15px;
+  background: #ffffff;
+}
+
+.my-record-card > header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px;
-  background: #fff7f6;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.my-record-card > header strong {
+  overflow: hidden;
+  color: #2f2a28;
+  font-size: 11px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-record-card > header b {
+  flex: 0 0 auto;
+  color: #756d69;
+  font-size: 11px;
+}
+
+.my-record-card > header b.is-gain,
+.my-record-card dd.is-gain {
   color: #b8323c;
 }
 
-.my-record-summary > span {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+.my-record-card > header b.is-loss,
+.my-record-card dd.is-loss {
+  color: #315fa4;
 }
 
-.my-record-summary strong {
-  font-size: 10px;
-}
-
-.my-record-summary small {
-  color: #817976;
+.my-record-card > p {
+  margin: 4px 0 11px;
+  color: #968d89;
   font-size: 8px;
+}
+
+.my-record-card dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 10px 0 0;
+  border-top: 1px solid #f0ebe7;
+}
+
+.my-record-card dl > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  text-align: center;
+}
+
+.my-record-card dl > div + div {
+  border-left: 1px solid #f0ebe7;
+}
+
+.my-record-card dt {
+  color: #9c9490;
+  font-size: 7px;
+}
+
+.my-record-card dd {
+  margin: 0;
+  color: #3b3634;
+  font-size: 10px;
+  font-weight: 700;
 }
 
 .my-grade-detail {
@@ -6470,24 +6518,12 @@ body:has(.my-screen) {
 }
 
 .my-grade-detail-hero {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  align-items: center;
-  gap: 14px;
   padding: 16px;
+  border: 1px solid #eadbd6;
   border-radius: 16px;
-  background: linear-gradient(145deg, #1d1b1d, #39272d);
-  box-shadow: 0 10px 24px rgba(49, 31, 35, 0.15);
-  color: #ffffff;
-}
-
-.my-grade-detail-hero .my-grade-seal {
-  width: 72px;
-  height: 72px;
-}
-
-.my-grade-detail-hero .my-grade-seal strong {
-  font-size: 28px;
+  background: linear-gradient(145deg, #fff7f4, #ffffff);
+  box-shadow: 0 8px 22px rgba(74, 53, 48, 0.07);
+  color: #2f2927;
 }
 
 .my-grade-detail-hero > div:last-child {
@@ -6498,7 +6534,7 @@ body:has(.my-screen) {
 }
 
 .my-grade-detail-hero > div:last-child small {
-  color: #bdb3b0;
+  color: #8f817d;
   font-size: 8px;
 }
 
@@ -6508,9 +6544,10 @@ body:has(.my-screen) {
 }
 
 .my-grade-detail-hero > div:last-child span {
-  color: #e6c687;
-  font-size: 10px;
-  font-weight: 650;
+  color: #736b68;
+  font-size: 8px;
+  font-weight: 500;
+  line-height: 1.5;
 }
 
 .my-grade-detail-progress {
@@ -6554,7 +6591,6 @@ body:has(.my-screen) {
   line-height: 1.5;
 }
 
-.my-score-history,
 .my-grade-method,
 .my-grade-ladder {
   overflow: hidden;
@@ -6563,7 +6599,6 @@ body:has(.my-screen) {
   background: #ffffff;
 }
 
-.my-score-history h3,
 .my-grade-method h3,
 .my-grade-ladder h3 {
   margin: 0;
@@ -6654,11 +6689,11 @@ body:has(.my-screen) {
 
 .my-grade-ladder > div {
   display: grid;
-  min-height: 36px;
-  grid-template-columns: 26px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 12px;
+  min-height: 54px;
+  grid-template-columns: 26px minmax(0, 1fr) 48px;
+  align-items: start;
+  gap: 9px;
+  padding: 9px 12px;
   border-top: 1px solid #f1ece7;
 }
 
@@ -6668,14 +6703,30 @@ body:has(.my-screen) {
   font-weight: 700;
 }
 
-.my-grade-ladder > div > strong {
+.my-grade-ladder > div > p {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+}
+
+.my-grade-ladder > div > p strong {
   color: #3a3533;
   font-size: 9px;
 }
 
-.my-grade-ladder > div > small {
+.my-grade-ladder > div > p small {
   color: #918986;
   font-size: 7px;
+  line-height: 1.4;
+}
+
+.my-grade-ladder > div > em {
+  color: #918986;
+  font-size: 7px;
+  font-style: normal;
+  text-align: right;
 }
 
 .my-grade-ladder > div.is-current {
@@ -6683,8 +6734,9 @@ body:has(.my-screen) {
 }
 
 .my-grade-ladder > div.is-current > span,
-.my-grade-ladder > div.is-current > strong,
-.my-grade-ladder > div.is-current > small {
+.my-grade-ladder > div.is-current > p strong,
+.my-grade-ladder > div.is-current > p small,
+.my-grade-ladder > div.is-current > em {
   color: #b8323c;
 }
 
