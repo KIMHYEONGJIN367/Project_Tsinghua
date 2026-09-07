@@ -65,7 +65,20 @@ type ChatFilter = 'all' | 'group' | 'personal'
 type ChatRoomKind = 'group' | 'personal'
 type ChatSwipeSide = 'leading' | 'trailing'
 type ChatCompetitionState = 'scheduled' | 'active' | 'ended' | 'invalidated' | 'chat-only'
-type MyPanelKey = 'profile' | 'records' | 'notifications' | 'friends' | 'devices' | 'visibility' | 'support'
+type MyPanelKey = 'profile' | 'grade' | 'records' | 'notifications' | 'friends' | 'devices' | 'visibility' | 'support'
+
+const investmentGradeTiers = [
+  { name: '주린이', minimum: 0 },
+  { name: '개미', minimum: 115 },
+  { name: '불개미', minimum: 135 },
+  { name: '슈퍼개미', minimum: 160 },
+  { name: '전업투자자', minimum: 190 },
+  { name: '애널리스트', minimum: 225 },
+  { name: '펀드매니저', minimum: 265 },
+  { name: '기관', minimum: 310 },
+  { name: '외인', minimum: 360 },
+  { name: '투자 거장', minimum: 420 },
+] as const
 
 type SocialViewKind = 'balance' | 'ranking'
 
@@ -2305,6 +2318,14 @@ function MySettingSwitch({ checked, label, onChange }: { checked: boolean; label
 }
 
 function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: ScreenKey) => void; onOpenCompetition: (title: string) => void }) {
+  const investmentIndex = 238
+  const gradeIndex = investmentGradeTiers.reduce((foundIndex, grade, index) => investmentIndex >= grade.minimum ? index : foundIndex, 0)
+  const currentGrade = investmentGradeTiers[Math.max(gradeIndex, 0)]
+  const nextGrade = investmentGradeTiers[gradeIndex + 1]
+  const gradeProgress = nextGrade
+    ? ((investmentIndex - currentGrade.minimum) / (nextGrade.minimum - currentGrade.minimum)) * 100
+    : 100
+  const pointsToNextGrade = nextGrade ? nextGrade.minimum - investmentIndex : 0
   const [profileName, setProfileName] = useState('김형진')
   const [profileIntro, setProfileIntro] = useState('확신보다 규칙으로 매매합니다.')
   const [draftName, setDraftName] = useState(profileName)
@@ -2331,6 +2352,7 @@ function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: Scre
 
   const panelTitle: Record<MyPanelKey, string> = {
     profile: '프로필 편집',
+    grade: '투자 등급',
     records: '내 대회 기록',
     notifications: '알림',
     friends: '친구 및 차단',
@@ -2340,8 +2362,14 @@ function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: Scre
   }
 
   const competitions = [
-    { title: '쌍띠 투자대회', state: '진행 중', rank: '현재 2위', returnValue: '+28.4%', tone: 'is-gain', image: investRoom },
-    { title: '카카오 투자대회', state: '종료', rank: '최종 15위', returnValue: '-15.8%', tone: 'is-loss', image: friendsRoom },
+    { title: '쌍띠 투자대회', state: '진행 중', rank: '현재 2위', returnValue: '+28.4%', tone: 'is-gain', scoreDelta: '정산 전', scoreTone: '', image: investRoom },
+    { title: '카카오 투자대회', state: '종료', rank: '최종 5위', returnValue: '-15.8%', tone: 'is-loss', scoreDelta: '-13점', scoreTone: 'is-loss', image: friendsRoom },
+  ]
+
+  const scoreHistory = [
+    { title: '카카오 투자대회', detail: '30일 · 6명 · 최종 5위', score: '-13', tone: 'is-loss' },
+    { title: '반도체 실전 리그', detail: '90일 · 8명 · 최종 2위', score: '+29', tone: 'is-gain' },
+    { title: '개미들의 반란', detail: '14일 · 5명 · 최종 3위', score: '+7', tone: 'is-gain' },
   ]
 
   const renderPanelContent = () => {
@@ -2350,7 +2378,7 @@ function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: Scre
         <form className="my-profile-form" onSubmit={(event) => {
           event.preventDefault()
           setProfileName(draftName.trim() || '김형진')
-          setProfileIntro(draftIntro.trim() || '한 줄 소개를 입력해보세요.')
+          setProfileIntro(draftIntro.trim() || '상태메시지를 입력해보세요.')
           setActivePanel(null)
         }}>
           <div className="my-profile-avatar-edit">
@@ -2358,7 +2386,7 @@ function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: Scre
             <button type="button" aria-label="프로필 사진 변경"><MyIcon kind="edit" /></button>
           </div>
           <label>닉네임<input value={draftName} maxLength={12} onChange={(event) => setDraftName(event.target.value)} /></label>
-          <label>한 줄 소개<textarea value={draftIntro} maxLength={36} rows={2} onChange={(event) => setDraftIntro(event.target.value)} /></label>
+          <label>상태메시지<textarea value={draftIntro} maxLength={36} rows={2} onChange={(event) => setDraftIntro(event.target.value)} /></label>
           <button type="submit" className="my-primary-button">저장</button>
         </form>
       )
@@ -2371,10 +2399,62 @@ function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: Scre
             <button type="button" key={competition.title} onClick={() => { setActivePanel(null); onOpenCompetition(competition.title) }}>
               <img src={competition.image} alt="" width="42" height="42" />
               <span><strong>{competition.title}</strong><small>{competition.state} · {competition.rank}</small></span>
-              <b className={competition.tone}>{competition.returnValue}</b>
+              <span className="my-competition-result">
+                <b className={competition.tone}>{competition.returnValue}</b>
+                <em className={competition.scoreTone}>{competition.scoreDelta}</em>
+              </span>
             </button>
           ))}
-          <div className="my-record-summary"><MyIcon kind="trophy" /><span><strong>완주율 67%</strong><small>참가 6회 중 4회 완주</small></span></div>
+        </div>
+      )
+    }
+
+    if (activePanel === 'grade') {
+      return (
+        <div className="my-grade-detail">
+          <section className="my-grade-detail-hero">
+            <div className="my-grade-seal" aria-hidden="true"><small>LEVEL 06</small><strong>A</strong><span>PRO</span></div>
+            <div>
+              <small>나의 투자 등급</small>
+              <strong>{currentGrade.name}</strong>
+              <span>투자지수 {investmentIndex}</span>
+            </div>
+          </section>
+
+          <section className="my-grade-detail-progress">
+            <div><strong>{nextGrade ? `다음 ${nextGrade.name}` : '최고 등급'}</strong><span>{nextGrade ? `${pointsToNextGrade}점 남음` : `${investmentIndex}점`}</span></div>
+            <span className="my-grade-progress-track"><i style={{ width: `${Math.max(0, Math.min(100, gradeProgress))}%` }} /></span>
+          </section>
+
+          <p className="my-grade-disclaimer">천투 게임 내 등급이며 실제 금융 자격이나 투자 전문성을 인증하지 않아요.</p>
+
+          <section className="my-score-history">
+            <h3>최근 점수 변화</h3>
+            {scoreHistory.map((history) => (
+              <div key={history.title}>
+                <span><strong>{history.title}</strong><small>{history.detail}</small></span>
+                <b className={history.tone}>{history.score}점</b>
+              </div>
+            ))}
+          </section>
+
+          <section className="my-grade-method">
+            <h3>점수는 이렇게 정해져요</h3>
+            <div><span>01</span><p><strong>최종 순위와 상대 지수</strong><small>예상보다 높은 순위를 기록할수록 더 올라요.</small></p></div>
+            <div><span>02</span><p><strong>참가 인원과 실제 기간</strong><small>인원이 많고 오래 진행한 대회일수록 더 크게 반영돼요.</small></p></div>
+            <div><span>03</span><p><strong>대회 종료 시 한 번만</strong><small>진행 중 예상 점수는 보여주지 않고 종료 결과로 확정해요.</small></p></div>
+          </section>
+
+          <section className="my-grade-ladder">
+            <h3>전체 등급</h3>
+            {investmentGradeTiers.map((grade, index) => (
+              <div key={grade.name} className={grade.name === currentGrade.name ? 'is-current' : ''}>
+                <span>{String(index + 1).padStart(2, '0')}</span>
+                <strong>{grade.name}</strong>
+                <small>{index === investmentGradeTiers.length - 1 ? `${grade.minimum}점 이상` : `${grade.minimum}~${investmentGradeTiers[index + 1].minimum - 1}점`}</small>
+              </div>
+            ))}
+          </section>
         </div>
       )
     }
@@ -2446,15 +2526,25 @@ function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: Scre
 
         <section className="my-profile">
           <img src={investProfile} alt="김형진 프로필" width="66" height="66" />
-          <span className="my-profile-copy"><strong>{profileName}</strong><small>개미 · 천투 ID @kimhj</small><p>{profileIntro}</p></span>
+          <span className="my-profile-copy"><strong>{profileName}</strong><small>천투 ID @kimhj</small><p>{profileIntro}</p></span>
           <button type="button" className="my-profile-edit" aria-label="프로필 편집" onClick={openProfileEditor}><MyIcon kind="edit" /></button>
         </section>
 
-        <section className="my-stats" aria-label="나의 대회 기록 요약">
-          <div><strong>6</strong><span>참가</span></div>
-          <div><strong>4</strong><span>완주</span></div>
-          <div><strong>1</strong><span>우승</span></div>
-        </section>
+        <button type="button" className="my-performance-card" onClick={() => setActivePanel('grade')} aria-label={`${currentGrade.name}, 투자지수 ${investmentIndex}. 등급 자세히 보기`}>
+          <span className="my-performance-glow" aria-hidden="true" />
+          <span className="my-performance-heading"><small>MY PERFORMANCE</small><em>천투 게임 등급 <MyIcon kind="chevron" /></em></span>
+          <span className="my-return-overview">
+            <span><small>누적 수익률</small><strong>+12.4%</strong></span>
+            <span><small>월간</small><strong>+4.8%</strong></span>
+            <span><small>일간</small><strong className="is-loss">-0.7%</strong></span>
+          </span>
+          <span className="my-grade-overview">
+            <span className="my-grade-seal" aria-hidden="true"><small>LEVEL 06</small><strong>A</strong><span>PRO</span></span>
+            <span className="my-grade-copy"><small>투자 등급</small><strong>{currentGrade.name}</strong><em>투자지수 {investmentIndex}</em></span>
+          </span>
+          <span className="my-grade-progress-copy"><strong>{nextGrade ? `다음 ${nextGrade.name}` : '최고 등급'}</strong><em>{nextGrade ? `${pointsToNextGrade}점 남음` : `${investmentIndex}점`}</em></span>
+          <span className="my-grade-progress-track"><i style={{ width: `${Math.max(0, Math.min(100, gradeProgress))}%` }} /></span>
+        </button>
 
         <section className="my-section">
           <header><h2>최근 대회</h2><button type="button" onClick={() => setActivePanel('records')}>전체 기록</button></header>
@@ -2463,7 +2553,10 @@ function MyScreen({ onNavigate, onOpenCompetition }: { onNavigate: (screen: Scre
               <button type="button" key={competition.title} onClick={() => onOpenCompetition(competition.title)}>
                 <img src={competition.image} alt="" width="42" height="42" />
                 <span><strong>{competition.title}</strong><small>{competition.state} · {competition.rank}</small></span>
-                <b className={competition.tone}>{competition.returnValue}</b>
+                <span className="my-competition-result">
+                  <b className={competition.tone}>{competition.returnValue}</b>
+                  <em className={competition.scoreTone}>{competition.scoreDelta}</em>
+                </span>
               </button>
             ))}
           </div>
