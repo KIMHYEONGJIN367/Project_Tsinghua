@@ -395,3 +395,82 @@ export function RankingSheet({ viewCount, isSpectator = false, onClose }: { view
     </SwipeSheet>
   )
 }
+
+export function CompetitionResultSheet({
+  competitionTitle,
+  periodLabel,
+  initialCapital,
+  invalidated = false,
+  viewerStatus = 'participant',
+  forfeitNav,
+  forfeitReturn,
+  onClose,
+}: {
+  competitionTitle: string
+  periodLabel: string
+  initialCapital: number
+  invalidated?: boolean
+  viewerStatus?: 'participant' | 'forfeited' | 'spectator'
+  forfeitNav?: number
+  forfeitReturn?: number
+  onClose: () => void
+}) {
+  const finalLeaderboard = leaderboard
+    .filter((entry) => viewerStatus === 'participant' || !entry.isMe)
+    .map((entry) => ({
+      ...entry,
+      nav: entry.isMe ? TOTAL_ASSET : Math.round(initialCapital * (1 + entry.returnValue / 100)),
+    }))
+  const leadingEntry = finalLeaderboard[0]
+  const viewerNav = viewerStatus === 'forfeited' ? forfeitNav ?? initialCapital : viewerStatus === 'participant' ? TOTAL_ASSET : leadingEntry?.nav ?? initialCapital
+  const viewerReturn = viewerStatus === 'forfeited' ? forfeitReturn ?? 0 : viewerStatus === 'participant' ? TOTAL_RETURN : leadingEntry?.returnValue ?? 0
+  const viewerLabel = viewerStatus === 'forfeited' ? '포기 시점 NAV' : viewerStatus === 'participant' ? '내 최종 결과' : '1위 최종 결과'
+  const viewerResult = viewerStatus === 'forfeited' ? '참가 종료' : viewerStatus === 'participant' ? `${CURRENT_RANK}위` : leadingEntry?.name ?? '결과 확정'
+
+  return (
+    <SwipeSheet edge="top" label="대회 결과" sheetClassName="social-sheet-result" onClose={onClose}>
+      <header className="competition-result-header">
+        <span><small>{competitionTitle}</small><strong>대회 결과</strong></span>
+        <em className={invalidated ? 'is-invalidated' : ''}>{invalidated ? '무효' : '확정'}</em>
+      </header>
+
+      {invalidated ? (
+        <section className="competition-result-invalid">
+          <span aria-hidden="true">—</span>
+          <strong>대회 무효 · 순위 없음</strong>
+          <p>시작 후 7일 전에 종료되어 누적 수익률과 투자지수에 반영되지 않습니다.</p>
+        </section>
+      ) : (
+        <>
+          <section className="competition-result-summary" aria-label={viewerLabel}>
+            <span><small>{viewerLabel}</small><strong>{viewerResult}</strong></span>
+            <span><b>{formatWon(viewerNav)}</b><em className={viewerReturn >= 0 ? 'is-positive' : 'is-negative'}>{formatReturn(viewerReturn)}</em></span>
+          </section>
+
+          <div className="competition-result-caption">
+            <span>최종 순위</span>
+            <small>표시 전 원본 NAV 기준 · 확정 후 변경 없음</small>
+          </div>
+          <ol className="competition-result-list">
+            {finalLeaderboard.map((entry) => (
+              <li className={entry.isMe ? 'is-me' : ''} key={entry.name}>
+                <strong className="competition-result-rank">{entry.rank}</strong>
+                <span className="ranking-avatar" aria-hidden="true">{entry.name.slice(0, 1)}</span>
+                <span className="competition-result-player"><strong>{entry.name}{entry.isMe ? ' (나)' : ''}</strong><small>최종 NAV</small></span>
+                <span className="competition-result-value"><strong>{formatWon(entry.nav)}</strong><small className={entry.returnValue >= 0 ? 'is-positive' : 'is-negative'}>{formatReturn(entry.returnValue)}</small></span>
+              </li>
+            ))}
+          </ol>
+          {viewerStatus === 'forfeited' && (
+            <div className="competition-result-forfeit"><strong>참가 종료</strong><span>포기 기록은 순위표와 누적 수익률에서 제외되지만 투자지수에는 패배로 반영됩니다.</span></div>
+          )}
+        </>
+      )}
+
+      <footer className="competition-result-footer">
+        <strong>{periodLabel}</strong>
+        <span>{invalidated ? '개인 대회 기록에는 무효 상태로 남아요.' : 'NAV와 수익률은 라운지에 공개되며 보유내역·주문·거래내역은 공개되지 않아요.'}</span>
+      </footer>
+    </SwipeSheet>
+  )
+}

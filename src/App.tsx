@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { PortfolioSheet, RankingSheet, TradeHistorySheet } from './AccountSheets'
+import { CompetitionResultSheet, PortfolioSheet, RankingSheet, TradeHistorySheet } from './AccountSheets'
 import {
   CompetitionHostSheet,
   CompetitionMulliganIcon,
@@ -64,7 +64,7 @@ type NavKey = 'home' | 'chat' | 'invest' | 'my'
 type ChatFilter = 'all' | 'group' | 'personal'
 type ChatRoomKind = 'group' | 'personal'
 type ChatSwipeSide = 'leading' | 'trailing'
-type ChatCompetitionState = 'scheduled' | 'active' | 'ended' | 'invalidated' | 'chat-only'
+type ChatCompetitionState = 'scheduled' | 'active' | 'settling' | 'ended' | 'invalidated' | 'chat-only'
 type MyPanelKey = 'profile' | 'grade' | 'records' | 'notifications' | 'friends' | 'devices' | 'visibility' | 'support'
 
 const investmentGradeTiers = [
@@ -1037,7 +1037,7 @@ function ChatRoomRow({ room, openSwipe, onOpenActions, onCloseActions, onNavigat
             <strong>{room.title}</strong>
             {room.competitionState && (
               <span className={`chat-room-status is-${room.competitionState}`}>
-                {room.competitionState === 'active' ? '대회 중' : room.competitionState === 'scheduled' ? '예약' : room.competitionState === 'invalidated' ? '무효' : room.competitionState === 'ended' ? '종료' : '라운지'}
+                {room.competitionState === 'active' ? '대회 중' : room.competitionState === 'scheduled' ? '예약' : room.competitionState === 'settling' ? '정산 중' : room.competitionState === 'invalidated' ? '무효' : room.competitionState === 'ended' ? '종료' : '라운지'}
               </span>
             )}
             {room.competitionMembership === 'eligible' && <span className="chat-membership-status is-eligible">참여 대기</span>}
@@ -1264,6 +1264,8 @@ function ChatRoomScreen({
   const chatSwipeStartYRef = useRef<number | null>(null)
   const canSendMessage = messageDraft.trim().length > 0
   const isActiveCompetition = room.competitionState === 'active'
+  const isCompetitionSettling = room.competitionState === 'settling'
+  const isCompetitionOutcome = room.competitionState === 'ended' || room.competitionState === 'invalidated'
   const isCompetitionParticipant = isActiveCompetition && room.competitionMembership === 'participant'
   const isCompetitionSpectator = isActiveCompetition && room.competitionMembership === 'forfeited'
   const competitionAtCapacity = Boolean(room.competition && isCompetitionAtCapacity(room.competition))
@@ -1277,6 +1279,9 @@ function ChatRoomScreen({
   const competitionReturn = usesExistingPortfolioMock ? TOTAL_RETURN : 0
   const competitionRemainingDays = room.competition ? getCompetitionRemainingDays(room.competition.endDate) : 0
   const competitionEndLabel = room.competition ? formatCompetitionDate(room.competition.endDate).replace(/^\d+년\s*/, '') : ''
+  const resultViewerStatus = room.competitionMembership === 'participant' ? 'participant' : room.competitionMembership === 'forfeited' ? 'forfeited' : 'spectator'
+  const resultNav = resultViewerStatus === 'forfeited' ? room.forfeitSnapshot?.nav ?? competitionAsset : resultViewerStatus === 'participant' ? competitionAsset : Math.round((room.competition?.initialCapital ?? 0) * 1.318)
+  const resultReturn = resultViewerStatus === 'forfeited' ? room.forfeitSnapshot?.returnValue ?? 0 : resultViewerStatus === 'participant' ? competitionReturn : 31.8
 
   useEffect(() => {
     if (!isCompetitionParticipant) {
@@ -1286,8 +1291,8 @@ function ChatRoomScreen({
       setIsTradeHistorySheetOpen(false)
       setIsMulliganConfirmOpen(false)
     }
-    if (!isCompetitionParticipant && !isCompetitionSpectator) setIsRankingSheetOpen(false)
-  }, [isCompetitionParticipant, isCompetitionSpectator, room.id])
+    if (!isCompetitionParticipant && !isCompetitionSpectator && !isCompetitionOutcome) setIsRankingSheetOpen(false)
+  }, [isCompetitionParticipant, isCompetitionSpectator, isCompetitionOutcome, room.id])
 
   useEffect(() => {
     if (roomTimeline.length > 0) {
@@ -1456,7 +1461,7 @@ function ChatRoomScreen({
     closeTradeSheet()
     setIsPortfolioSheetOpen(false)
     setIsTradeHistorySheetOpen(false)
-    onRecordSocialView('ranking')
+    if (isActiveCompetition) onRecordSocialView('ranking')
     setIsRankingSheetOpen(true)
   }
 
@@ -1482,7 +1487,7 @@ function ChatRoomScreen({
               {room.title}
               {room.count && <span className="chat-header-participants">{room.count}명</span>}
             </strong>
-            <span>{isActiveCompetition ? '대회 진행 중' : room.competitionState === 'scheduled' ? '대회 예약됨' : room.competitionState === 'invalidated' ? '대회 무효 · 라운지' : room.competitionState === 'ended' ? '대회 종료 · 라운지' : room.competitionState === 'chat-only' ? '투자 라운지' : '개인 대화'}</span>
+            <span>{isActiveCompetition ? '대회 진행 중' : isCompetitionSettling ? '대회 결과 집계 중' : room.competitionState === 'scheduled' ? '대회 예약됨' : room.competitionState === 'invalidated' ? '대회 무효 · 라운지' : room.competitionState === 'ended' ? '대회 종료 · 라운지' : room.competitionState === 'chat-only' ? '투자 라운지' : '개인 대화'}</span>
           </div>
           <div className="chat-room-actions">
             {room.kind === 'group' && room.isHost && (
@@ -1527,6 +1532,32 @@ function ChatRoomScreen({
             </div>
           </div>
         </section>}
+        {isCompetitionSettling && room.competition && (
+          <section className="competition-context-card is-settling" role="status" aria-live="polite">
+            <span className="competition-context-icon"><i className="competition-settling-spinner" aria-hidden="true" /></span>
+            <div><small>거래 종료 · 결과 집계 중</small><strong>최종 NAV를 확정하고 있어요</strong><p>체결분을 반영하고 남은 미체결 주문을 취소한 뒤 결과를 공개합니다.</p></div>
+          </section>
+        )}
+        {isCompetitionOutcome && room.competition && (
+          <section className={`chat-account-hud chat-result-hud is-${room.competitionState}`} aria-label={room.competitionState === 'invalidated' ? '무효 대회 결과' : '확정된 대회 결과'}>
+            <div className="chat-account-hud-card chat-result-hud-card">
+              <div className="chat-account-hud-main">
+                <span>{room.competitionState === 'invalidated' ? '대회 무효' : resultViewerStatus === 'participant' ? '내 최종 NAV' : resultViewerStatus === 'forfeited' ? '포기 시점 NAV' : '1위 최종 NAV'}</span>
+                <strong>{room.competitionState === 'invalidated' ? '순위 없음' : formatWon(resultNav)}</strong>
+                <em>{room.competitionState === 'invalidated' ? '성과 미반영' : formatReturn(resultReturn)}</em>
+              </div>
+              <div className="chat-account-hud-rank">
+                <span>{room.competitionState === 'invalidated' ? '최종 결과' : resultViewerStatus === 'participant' ? '나의 결과' : resultViewerStatus === 'forfeited' ? '참가 상태' : '우승자'}</span>
+                <strong>{room.competitionState === 'invalidated' ? '무효' : resultViewerStatus === 'participant' ? <><b>{CURRENT_RANK}</b>위</> : resultViewerStatus === 'forfeited' ? '참가 종료' : '김영규'}</strong>
+                <small>{room.competitionState === 'invalidated' ? '7일 미만 종료' : `${room.competition.participantCount}명 참가`}</small>
+              </div>
+              <div className="chat-account-hud-footer">
+                <span className="chat-account-deadline"><b>확정</b><span>{competitionEndLabel} 종료 · 이후 시세 재계산 없음</span></span>
+                <div className="result-actions"><button type="button" onClick={openRankingSheet}>결과</button></div>
+              </div>
+            </div>
+          </section>
+        )}
         {room.competitionState === 'scheduled' && room.competition && (
           <section className="competition-context-card is-scheduled">
             <span className="competition-context-icon"><CompetitionTrophyIcon /></span>
@@ -1557,20 +1588,6 @@ function ChatRoomScreen({
             <span className="competition-context-icon"><CompetitionTrophyIcon /></span>
             <div><small>방장 전용</small><strong>이 라운지에서 대회를 열 수 있어요</strong><p>초기자본과 기간, 공매도 규칙을 먼저 설정합니다.</p></div>
             <button type="button" onClick={() => setIsCompetitionHostSheetOpen(true)}>주최하기</button>
-          </section>
-        )}
-        {room.competitionState === 'ended' && room.competition && (
-          <section className="competition-context-card is-ended">
-            <span className="competition-context-icon"><CompetitionTrophyIcon /></span>
-            <div><small>대회 종료</small><strong>{room.competition.title}</strong><p>종료 시점 NAV로 최종 순위가 확정됐어요.</p></div>
-            {room.isHost && <button type="button" onClick={() => setIsCompetitionHostSheetOpen(true)}>다음 대회</button>}
-          </section>
-        )}
-        {room.competitionState === 'invalidated' && room.competition && (
-          <section className="competition-context-card is-invalidated">
-            <span className="competition-context-icon"><CompetitionTrophyIcon /></span>
-            <div><small>대회 무효</small><strong>{room.competition.title}</strong><p>시작 후 7일 전에 종료되어 최종 순위가 없습니다.</p></div>
-            {room.isHost && <button type="button" onClick={() => setIsCompetitionHostSheetOpen(true)}>다음 대회</button>}
           </section>
         )}
         <div className="chat-date-divider">{room.recentHistory?.length ? '참가 시점 기준 최근 3일 채팅' : '오늘, 2026년 2월 24일'}</div>
@@ -1703,7 +1720,7 @@ function ChatRoomScreen({
           })}
           <div ref={messagesEndRef} aria-hidden="true" />
         </section>
-        {(isPortfolioSheetOpen || isRankingSheetOpen) && (
+        {(isPortfolioSheetOpen || (isRankingSheetOpen && isActiveCompetition)) && (
           <div className="chat-view-presence" role="status">
             <span aria-hidden="true">👀</span>
             김형진님이 {isPortfolioSheetOpen ? '잔고' : '순위'}를 확인 중이에요
@@ -1795,6 +1812,18 @@ function ChatRoomScreen({
       )}
       {(isCompetitionParticipant || isCompetitionSpectator) && isRankingSheetOpen && (
         <RankingSheet isSpectator={isCompetitionSpectator} viewCount={viewCounts.ranking} onClose={() => setIsRankingSheetOpen(false)} />
+      )}
+      {isCompetitionOutcome && isRankingSheetOpen && room.competition && (
+        <CompetitionResultSheet
+          competitionTitle={room.competition.title}
+          periodLabel={`${formatCompetitionDate(room.competition.startDate)} – ${formatCompetitionDate(room.competition.endDate)}`}
+          initialCapital={room.competition.initialCapital}
+          invalidated={room.competitionState === 'invalidated'}
+          viewerStatus={resultViewerStatus}
+          forfeitNav={room.forfeitSnapshot?.nav}
+          forfeitReturn={room.forfeitSnapshot?.returnValue}
+          onClose={() => setIsRankingSheetOpen(false)}
+        />
       )}
       {isCompetitionHostSheetOpen && room.kind === 'group' && room.isHost && (
         <CompetitionHostSheet
@@ -2360,12 +2389,12 @@ function MyScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
   }
 
   const competitionRecords = [
-    { title: '카카오 투자대회', period: '2026.08.01 – 08.30', duration: '30일', rank: '5위', returnValue: '-15.8%', returnTone: 'is-loss', participants: '6명', scoreDelta: '-13점', scoreTone: 'is-loss' },
-    { title: '반도체 실전 리그', period: '2026.05.30 – 08.27', duration: '90일', rank: '2위', returnValue: '+31.7%', returnTone: 'is-gain', participants: '8명', scoreDelta: '+29점', scoreTone: 'is-gain' },
-    { title: '개미들의 반란', period: '2026.05.01 – 05.14', duration: '14일', rank: '3위', returnValue: '+8.6%', returnTone: 'is-gain', participants: '5명', scoreDelta: '+7점', scoreTone: 'is-gain' },
-    { title: '가치투자 챌린지', period: '2026.03.01 – 04.29', duration: '60일', rank: '1위', returnValue: '+22.1%', returnTone: 'is-gain', participants: '10명', scoreDelta: '+35점', scoreTone: 'is-gain' },
-    { title: '봄맞이 주식대회', period: '2026.02.01 – 02.14', duration: '14일', rank: '6위', returnValue: '-4.2%', returnTone: 'is-loss', participants: '7명', scoreDelta: '-11점', scoreTone: 'is-loss' },
-    { title: '새해 첫 수익', period: '2026.01.05 – 01.11', duration: '7일', rank: '2위', returnValue: '+5.4%', returnTone: 'is-gain', participants: '4명', scoreDelta: '+6점', scoreTone: 'is-gain' },
+    { title: '카카오 투자대회', status: '정상 종료', statusTone: 'is-complete', period: '2026.08.01 – 08.30', duration: '30일', rank: '5위', finalNav: '8,420,000원', returnValue: '-15.8%', returnTone: 'is-loss', participants: '6명', scoreDelta: '-13점', scoreTone: 'is-loss', inclusion: '누적 수익률 반영' },
+    { title: '반도체 실전 리그', status: '유효 중도 종료', statusTone: 'is-complete', period: '2026.05.30 – 08.27', duration: '90일', rank: '2위', finalNav: '13,170,000원', returnValue: '+31.7%', returnTone: 'is-gain', participants: '8명', scoreDelta: '+29점', scoreTone: 'is-gain', inclusion: '누적 수익률 반영' },
+    { title: '개미들의 반란', status: '포기', statusTone: 'is-forfeited', period: '2026.05.01 – 05.10', duration: '10일', rank: '순위 제외', finalNav: '10,860,000원', returnValue: '+8.6%', returnTone: 'is-gain', participants: '5명', scoreDelta: '-9점', scoreTone: 'is-loss', inclusion: '누적 수익률 미반영 · 포기 횟수 저장' },
+    { title: '가치투자 챌린지', status: '정상 종료', statusTone: 'is-complete', period: '2026.03.01 – 04.29', duration: '60일', rank: '1위', finalNav: '12,210,000원', returnValue: '+22.1%', returnTone: 'is-gain', participants: '10명', scoreDelta: '+35점', scoreTone: 'is-gain', inclusion: '누적 수익률 반영' },
+    { title: '봄맞이 주식대회', status: '무효', statusTone: 'is-invalidated', period: '2026.02.01 – 02.05', duration: '5일', rank: '순위 없음', finalNav: '—', returnValue: '—', returnTone: '', participants: '7명', scoreDelta: '0점', scoreTone: '', inclusion: '누적 수익률·투자지수 미반영' },
+    { title: '새해 첫 수익', status: '정상 종료', statusTone: 'is-complete', period: '2026.01.05 – 01.11', duration: '7일', rank: '2위', finalNav: '10,540,000원', returnValue: '+5.4%', returnTone: 'is-gain', participants: '4명', scoreDelta: '+6점', scoreTone: 'is-gain', inclusion: '누적 수익률 반영' },
   ]
 
   const renderPanelContent = () => {
@@ -2395,13 +2424,15 @@ function MyScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
           <div className="my-record-list">
             {competitionRecords.map((competition) => (
               <article className="my-record-card" key={`${competition.title}-${competition.period}`}>
-                <header><strong>{competition.title}</strong><b className={competition.scoreTone}>{competition.scoreDelta}</b></header>
+                <header><span><strong>{competition.title}</strong><small className={competition.statusTone}>{competition.status}</small></span><b className={competition.scoreTone}>{competition.scoreDelta}</b></header>
                 <p>{competition.period} · {competition.duration}</p>
                 <dl>
                   <div><dt>최종 순위</dt><dd>{competition.rank}</dd></div>
+                  <div><dt>최종 NAV</dt><dd>{competition.finalNav}</dd></div>
                   <div><dt>최종 수익률</dt><dd className={competition.returnTone}>{competition.returnValue}</dd></div>
                   <div><dt>참가 인원</dt><dd>{competition.participants}</dd></div>
                 </dl>
+                <footer>{competition.inclusion}</footer>
               </article>
             ))}
           </div>
@@ -2979,17 +3010,38 @@ export default function App() {
     const rankedStop = hasCompetitionReachedRankedDuration(room.competition)
     const endPhase = rankedStop ? 'ended' : 'invalidated'
     const endedCompetition: LoungeCompetition = { ...room.competition, phase: endPhase, endDate: today }
+    const settlingCompetition: LoungeCompetition = { ...endedCompetition, phase: 'settling' }
     setChatRoomItems((currentRooms) => currentRooms.map((item) => item.id === activeRoomId ? {
       ...item,
-      competition: endedCompetition,
-      competitionState: endPhase,
-      competitionMembership: 'none',
-      detail: rankedStop ? `${endedCompetition.title} 대회가 중도 종료됐어요` : `${endedCompetition.title} 대회가 무효 종료됐어요`,
+      competition: settlingCompetition,
+      competitionState: 'settling',
+      detail: `${endedCompetition.title} 대회 결과를 집계 중이에요`,
       meta: '방금',
     } : item))
     setInvestRoomItems((currentRooms) => currentRooms.filter((item) => item.title !== endedCompetition.title))
-    appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'competition-event', eventType: rankedStop ? 'ended' : 'invalidated', title: endedCompetition.title, detail: rankedStop ? '주최자가 대회를 중간 종료했습니다. 종료 시점의 NAV로 최종 순위를 확정해요.' : '주최자가 대회를 중간 종료했습니다. 시작 후 7일 전이라 무효이며 최종 순위가 없습니다.', sentAt: getCurrentChatTime() })
-    setCompetitionNotice(rankedStop ? '대회가 즉시 종료됐어요. NAV 순위를 확정하고 음소거와 관계없이 알립니다.' : '대회가 즉시 무효 종료됐어요. 순위는 만들지 않고 모든 멤버에게 알립니다.')
+    setOpenOrders([])
+    setCompetitionNotice('거래를 종료하고 있어요. 체결분을 반영하고 남은 미체결 주문을 취소한 뒤 최종 NAV를 확정합니다.')
+
+    window.setTimeout(() => {
+      setChatRoomItems((currentRooms) => currentRooms.map((item) => item.id === room.id && item.competition?.id === endedCompetition.id ? {
+        ...item,
+        competition: endedCompetition,
+        competitionState: endPhase,
+        detail: rankedStop ? `${endedCompetition.title} 최종 결과가 확정됐어요` : `${endedCompetition.title} 대회가 무효 종료됐어요`,
+        meta: '방금',
+      } : item))
+      appendRoomTimeline(room.id, {
+        id: crypto.randomUUID(),
+        kind: 'competition-event',
+        eventType: rankedStop ? 'ended' : 'invalidated',
+        title: endedCompetition.title,
+        detail: rankedStop
+          ? '주최자가 대회를 종료했습니다. 가장 최근 공식 가격으로 확정한 NAV·수익률과 최종 순위를 확인할 수 있어요.'
+          : '주최자가 대회를 종료했습니다. 시작 후 7일 전이라 무효이며 순위와 성과에 반영되지 않습니다.',
+        sentAt: getCurrentChatTime(),
+      })
+      setCompetitionNotice(rankedStop ? '최종 NAV와 순위가 확정됐어요. 음소거와 관계없이 종료 알림을 보냅니다.' : '대회가 무효 처리됐어요. 순위와 성과에는 반영되지 않습니다.')
+    }, 850)
   }
 
   const participateRoomCompetition = () => {

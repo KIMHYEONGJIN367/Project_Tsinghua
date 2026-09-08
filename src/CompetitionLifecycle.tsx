@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 
-export type CompetitionPhase = 'scheduled' | 'active' | 'ended' | 'invalidated'
+export type CompetitionPhase = 'scheduled' | 'active' | 'settling' | 'ended' | 'invalidated'
 export type CompetitionMembership = 'none' | 'eligible' | 'participant' | 'forfeited'
 
 export type LoungeCompetition = {
@@ -252,14 +252,14 @@ export function CompetitionHostSheet({ loungeTitle, competition, onClose, onCrea
     return (
       <LifecycleSheet label="대회 관리" onClose={onClose}>
         <header className="competition-lifecycle-header">
-          <span className={`competition-phase-badge is-${competition.phase}`}>{competition.phase === 'scheduled' ? '예약' : competition.phase === 'active' ? '진행 중' : competition.phase === 'invalidated' ? '무효' : '종료'}</span>
+          <span className={`competition-phase-badge is-${competition.phase}`}>{competition.phase === 'scheduled' ? '예약' : competition.phase === 'active' ? '진행 중' : competition.phase === 'settling' ? '결과 집계 중' : competition.phase === 'invalidated' ? '무효' : '종료'}</span>
           <button type="button" aria-label="대회 관리 닫기" onClick={onClose}>×</button>
         </header>
         <div className="competition-lifecycle-scroll">
           <section className="competition-manage-hero">
             <span>방장 전용</span>
             <h2>{competition.title}</h2>
-            <p>{competition.phase === 'scheduled' ? '규칙이 잠겼고 시작을 기다리고 있어요.' : competition.phase === 'active' ? '대회가 진행 중이며 규칙은 변경할 수 없어요.' : competition.phase === 'invalidated' ? '7일 전에 종료되어 최종 순위가 없는 대회예요.' : '최종 NAV와 순위가 확정된 대회예요.'}</p>
+            <p>{competition.phase === 'scheduled' ? '규칙이 잠겼고 시작을 기다리고 있어요.' : competition.phase === 'active' ? '대회가 진행 중이며 규칙은 변경할 수 없어요.' : competition.phase === 'settling' ? '신규 주문을 막고 미체결을 취소한 뒤 최종 NAV를 확정하고 있어요.' : competition.phase === 'invalidated' ? '7일 전에 종료되어 최종 순위가 없는 대회예요.' : '최종 NAV와 순위가 확정된 대회예요.'}</p>
           </section>
           <CompetitionRuleSummary competition={competition} />
           {competition.phase === 'scheduled' && (
@@ -270,6 +270,9 @@ export function CompetitionHostSheet({ loungeTitle, competition, onClose, onCrea
           )}
           {competition.phase === 'active' && rankedStop && (
             <section className="competition-lock-note"><strong>순위가 있는 즉시 종료</strong><span>지금 종료하면 현재 NAV를 기준으로 최종 순위를 확정합니다.</span></section>
+          )}
+          {competition.phase === 'settling' && (
+            <section className="competition-lock-note"><strong>곧 결과가 확정돼요</strong><span>정산 중에는 다음 대회를 열 수 없고, 완료되면 별도 대기시간 없이 바로 열 수 있습니다.</span></section>
           )}
         </div>
         <footer className="competition-lifecycle-footer">

@@ -4822,6 +4822,24 @@ body:has(.splash-shell) {
   gap: 4px;
 }
 
+.chat-result-hud-card {
+  background:
+    radial-gradient(circle at 82% -18%, rgba(255, 255, 255, 0.22), transparent 42%),
+    linear-gradient(135deg, #782730 0%, #a72f39 58%, #c04a53 100%);
+}
+
+.chat-result-hud.is-invalidated .chat-result-hud-card {
+  background:
+    radial-gradient(circle at 82% -18%, rgba(255, 255, 255, 0.15), transparent 42%),
+    linear-gradient(135deg, #5d5552 0%, #756c68 58%, #918782 100%);
+  box-shadow: 0 9px 22px rgba(78, 67, 62, 0.18);
+}
+
+.chat-account-hud-footer > div.result-actions {
+  width: 66px;
+  grid-template-columns: 1fr;
+}
+
 .chat-account-hud-footer button {
   height: 30px;
   padding: 0;
@@ -5013,6 +5031,10 @@ body:has(.splash-shell) {
 }
 
 .social-sheet-top.social-sheet-portfolio {
+  height: 72%;
+}
+
+.social-sheet-top.social-sheet-result {
   height: 72%;
 }
 
@@ -5725,6 +5747,269 @@ body:has(.splash-shell) {
 
 .ranking-list > li > strong:last-child {
   font-size: 11px;
+}
+
+.competition-result-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px 12px;
+}
+
+.competition-result-header > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.competition-result-header small {
+  overflow: hidden;
+  color: #8f8586;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.competition-result-header strong {
+  color: #202124;
+  font-size: 15px;
+  font-weight: 780;
+}
+
+.competition-result-header > em {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: #f7e7e8;
+  color: #a82e38;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.competition-result-header > em.is-invalidated {
+  background: #eee9e6;
+  color: #766b67;
+}
+
+.competition-result-summary {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 16px 12px;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff3f2, #fff8f5);
+}
+
+.competition-result-summary > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.competition-result-summary > span:last-child {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.competition-result-summary small {
+  color: #8b7677;
+  font-size: 11px;
+}
+
+.competition-result-summary strong {
+  color: #2d2828;
+  font-size: 19px;
+  font-weight: 820;
+}
+
+.competition-result-summary b {
+  color: #2d2828;
+  font-size: 14px;
+  font-weight: 760;
+}
+
+.competition-result-summary em {
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 750;
+}
+
+.competition-result-summary .is-positive,
+.competition-result-value .is-positive {
+  color: #b8323c;
+}
+
+.competition-result-summary .is-negative,
+.competition-result-value .is-negative {
+  color: #315fa4;
+}
+
+.competition-result-caption {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 16px 7px;
+  color: #615957;
+}
+
+.competition-result-caption span {
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.competition-result-caption small {
+  color: #9a918e;
+  font-size: 11px;
+  text-align: right;
+}
+
+.competition-result-list {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  margin: 0 16px;
+  padding: 0;
+  list-style: none;
+  scrollbar-width: none;
+}
+
+.competition-result-list li {
+  display: grid;
+  min-height: 58px;
+  grid-template-columns: 26px 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border-bottom: 1px solid #f0ebe6;
+}
+
+.competition-result-list li.is-me {
+  margin: 3px 0;
+  border-bottom: 0;
+  border-radius: 12px;
+  background: #fff4f3;
+}
+
+.competition-result-list li.is-me .ranking-avatar {
+  background: #b8323c;
+  color: #ffffff;
+}
+
+.competition-result-rank {
+  color: #6e6566;
+  font-size: 13px;
+  text-align: center;
+}
+
+.competition-result-player,
+.competition-result-value {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.competition-result-player strong,
+.competition-result-value strong {
+  color: #302b2c;
+  font-size: 11px;
+}
+
+.competition-result-player small,
+.competition-result-value small {
+  color: #918788;
+  font-size: 11px;
+}
+
+.competition-result-value {
+  align-items: flex-end;
+  text-align: right;
+}
+
+.competition-result-forfeit {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+  margin: 8px 16px 0;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: #f4f0ed;
+  color: #786f6b;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.competition-result-forfeit strong {
+  flex: 0 0 auto;
+  color: #5c5451;
+}
+
+.competition-result-footer {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 16px 12px;
+  border-top: 1px solid #eee8e3;
+}
+
+.competition-result-footer strong {
+  color: #5a514f;
+  font-size: 11px;
+}
+
+.competition-result-footer span {
+  color: #968c88;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.competition-result-invalid {
+  display: flex;
+  min-height: 220px;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 0 16px;
+  padding: 22px;
+  border-radius: 16px;
+  background: #f7f4f2;
+  text-align: center;
+}
+
+.competition-result-invalid > span {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e8e1dd;
+  color: #746a66;
+  font-size: 17px;
+}
+
+.competition-result-invalid strong {
+  color: #3c3634;
+  font-size: 14px;
+}
+
+.competition-result-invalid p {
+  max-width: 260px;
+  margin: 0;
+  color: #89807c;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 @keyframes social-sheet-from-top {
@@ -6448,6 +6733,13 @@ body:has(.my-screen) {
   gap: 12px;
 }
 
+.my-record-card > header > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
 .my-record-card > header strong {
   overflow: hidden;
   color: #2f2a28;
@@ -6455,6 +6747,27 @@ body:has(.my-screen) {
   font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.my-record-card > header small {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #f3eeea;
+  color: #766d69;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.my-record-card > header small.is-complete {
+  background: #f8e9e9;
+  color: #a62d37;
+}
+
+.my-record-card > header small.is-forfeited,
+.my-record-card > header small.is-invalidated {
+  background: #eeeae7;
+  color: #776e69;
 }
 
 .my-record-card > header b {
@@ -6481,7 +6794,7 @@ body:has(.my-screen) {
 
 .my-record-card dl {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin: 0;
   padding: 10px 0 0;
   border-top: 1px solid #f0ebe7;
@@ -6492,11 +6805,20 @@ body:has(.my-screen) {
   min-width: 0;
   flex-direction: column;
   gap: 4px;
+  padding: 8px 4px;
   text-align: center;
 }
 
 .my-record-card dl > div + div {
   border-left: 1px solid #f0ebe7;
+}
+
+.my-record-card dl > div:nth-child(odd) {
+  border-left: 0;
+}
+
+.my-record-card dl > div:nth-child(n + 3) {
+  border-top: 1px solid #f0ebe7;
 }
 
 .my-record-card dt {
@@ -6509,6 +6831,15 @@ body:has(.my-screen) {
   color: #3b3634;
   font-size: 11px;
   font-weight: 700;
+}
+
+.my-record-card > footer {
+  margin-top: 7px;
+  padding-top: 8px;
+  border-top: 1px solid #f0ebe7;
+  color: #837a76;
+  font-size: 11px;
+  text-align: right;
 }
 
 .my-grade-detail {
@@ -7940,6 +8271,29 @@ body:has(.utility-shell) {
 .competition-context-card.is-scheduled {
   border-color: #e8d6af;
   background: linear-gradient(135deg, #fff9e9 0%, #fff 100%);
+}
+
+.competition-context-card.is-settling {
+  border-color: #e4d7d1;
+  background: linear-gradient(135deg, #faf6f3 0%, #fff 100%);
+}
+
+.competition-context-card.is-settling .competition-context-icon {
+  background: #efe5e0;
+  color: #a52c36;
+}
+
+.competition-settling-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(165, 44, 54, 0.2);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: competition-settling-spin 760ms linear infinite;
+}
+
+@keyframes competition-settling-spin {
+  to { transform: rotate(360deg); }
 }
 
 .competition-context-icon {
