@@ -2410,6 +2410,7 @@ function MyScreen({ onNavigate, friendItems, blockedFriendItems, onBlockFriend, 
   const [accountNotice, setAccountNotice] = useState('')
   const [showWithdrawalConfirm, setShowWithdrawalConfirm] = useState(false)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [marketingPushEnabled, setMarketingPushEnabled] = useState(true)
 
   useEffect(() => {
     if (!activePanel) return
@@ -2569,7 +2570,7 @@ function MyScreen({ onNavigate, friendItems, blockedFriendItems, onBlockFriend, 
                 {pendingBlockId === friend.id && (
                   <section className="my-block-confirm" role="alertdialog" aria-label={`${friend.name}님 차단 확인`}>
                     <strong>{friend.name}님을 차단할까요?</strong>
-                    <p>친구 관계가 끊기고 초대를 받을 수 없어요. 공통 라운지에서는 대화만 접히고 매매·순위·게임 기록은 계속 보여요.</p>
+                    <p>친구 관계가 끊기고 새 초대는 물론 이미 받은 초대 링크도 바로 사용할 수 없어요. 공통 라운지에서는 대화만 접히고 매매·순위·게임 기록은 계속 보여요.</p>
                     <div><button type="button" onClick={() => setPendingBlockId(null)}>취소</button><button type="button" onClick={() => { onBlockFriend(friend); setPendingBlockId(null) }}>차단</button></div>
                   </section>
                 )}
@@ -2602,10 +2603,10 @@ function MyScreen({ onNavigate, friendItems, blockedFriendItems, onBlockFriend, 
           {accountNotice && <p className="my-action-notice" role="status">{accountNotice}</p>}
           <p className="my-policy-callout"><MyIcon kind="shield" /><span><strong>원격 로그아웃은 즉시 적용</strong><small>선택한 기기의 로그인 세션과 실시간 연결을 바로 종료해요.</small></span></p>
           <section className="my-danger-zone">
-            <header><strong>계정 탈퇴</strong><small>계정과 참가 중인 대회를 정리해요.</small></header>
+            <header><strong>계정 탈퇴</strong><small>확정 즉시 처리되며 취소할 수 없어요.</small></header>
             {!showWithdrawalConfirm
               ? <button type="button" onClick={() => setShowWithdrawalConfirm(true)}>탈퇴 영향 확인</button>
-              : <div className="my-withdrawal-confirm"><ul><li>진행 중인 모든 대회가 즉시 포기 처리돼요.</li><li>방장이라면 기존 정책에 따라 먼저 위임해야 해요.</li><li>남은 참가자는 나를 이긴 것으로 정산돼요.</li><li>이력의 이름은 (탈퇴한 사용자)로 익명화돼요.</li><li>같은 소셜 계정은 7일 뒤 다시 가입할 수 있어요.</li></ul><div><button type="button" onClick={() => setShowWithdrawalConfirm(false)}>취소</button><button type="button" onClick={() => setAccountNotice('MVP 화면 검증용입니다. 실제 탈퇴 API는 아직 연결되지 않았어요.')}>탈퇴 계속</button></div></div>}
+              : <div className="my-withdrawal-confirm"><ul><li>확정 즉시 모든 기기에서 로그아웃되며 되돌릴 수 없어요.</li><li>진행 중인 모든 대회가 즉시 포기 처리돼요.</li><li>내가 발급한 활성 초대 코드·QR·링크가 모두 즉시 무효화돼요.</li><li>방장이면 서버가 자동으로 후임을 정하고, 후보가 없으면 대회·라운지를 정리해 탈퇴를 막지 않아요.</li><li>남은 참가자는 나를 이긴 것으로 정산돼요.</li><li>이력의 이름은 (탈퇴한 사용자)로 익명화돼요.</li><li>같은 소셜 계정은 탈퇴 시각부터 정확히 168시간 뒤 다시 가입할 수 있어요.</li></ul><div><button type="button" onClick={() => setShowWithdrawalConfirm(false)}>취소</button><button type="button" onClick={() => setAccountNotice('MVP 화면 검증용입니다. 실제 즉시 탈퇴 API는 아직 연결되지 않았어요.')}>탈퇴 즉시 확정</button></div></div>}
           </section>
         </div>
       )
@@ -2627,8 +2628,19 @@ function MyScreen({ onNavigate, friendItems, blockedFriendItems, onBlockFriend, 
 
     return (
       <div className="my-sheet-menu">
+        <div className="my-marketing-setting">
+          <span><strong>마케팅 정보 수신</strong><small>{marketingPushEnabled ? '수신 중 · 라운지 음소거와 별개로 앱 푸시를 받아요.' : '수신 거부 중 · 언제든 다시 켤 수 있어요.'}</small></span>
+          <button
+            type="button"
+            className={`my-setting-switch${marketingPushEnabled ? ' is-on' : ''}`}
+            role="switch"
+            aria-checked={marketingPushEnabled}
+            aria-label="마케팅 정보 수신"
+            onClick={() => setMarketingPushEnabled((enabled) => !enabled)}
+          ><span /></button>
+        </div>
         <button type="button"><span><strong>도움말 · 문의</strong><small>자주 묻는 질문과 문의하기</small></span><MyIcon kind="chevron" /></button>
-        <button type="button"><span><strong>사용자 · 메시지 신고</strong><small>라운지에서 불편한 활동을 알려주세요.</small></span><MyIcon kind="chevron" /></button>
+        <button type="button"><span><strong>사용자 · 메시지 신고</strong><small>접수 내용과 증거는 서버에 안전하게 보존해요.</small></span><MyIcon kind="chevron" /></button>
         <button type="button"><span><strong>이용약관</strong><small>서비스 이용 정책</small></span><MyIcon kind="chevron" /></button>
         <button type="button"><span><strong>개인정보처리방침</strong><small>개인정보 보호 및 처리 안내</small></span><MyIcon kind="chevron" /></button>
         <button type="button"><span><strong>오픈소스 라이선스</strong><small>앱에서 사용하는 라이브러리 안내</small></span><MyIcon kind="chevron" /></button>

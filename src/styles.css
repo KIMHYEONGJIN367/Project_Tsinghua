@@ -7103,6 +7103,7 @@ body:has(.my-screen) {
 }
 
 .my-sheet-menu > div + div,
+.my-sheet-menu > div + button,
 .my-sheet-menu > button + button {
   border-top: 1px solid #f1ece7;
 }
@@ -9942,7 +9943,7 @@ body:has(.investment-screen) { background: #fff; }
 .my-danger-zone > header small { color: #897d7a; font-size: 11px; }
 .my-danger-zone > button { width: 100%; min-height: 40px; border: 0; border-top: 1px solid #f0dedd; background: transparent; color: #a22e37; font-size: 12px; font-weight: 700; }
 .my-withdrawal-confirm { padding: 0 12px 12px; }
-.my-withdrawal-confirm ul { margin: 0 0 10px; padding-left: 18px; color: #706663; font-size: 11px; line-height: 1.55; }
+.my-withdrawal-confirm ul { margin: 0 0 10px; padding-left: 18px; color: #706663; font-size: 12px; line-height: 1.6; }
 
 .my-logout-panel { align-items: center; padding: 8px 2px; text-align: center; }
 .my-logout-symbol { display: grid; width: 54px; height: 54px; place-items: center; border-radius: 18px; background: #fff0ef; color: #b8323c; }
