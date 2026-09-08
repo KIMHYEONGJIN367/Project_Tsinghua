@@ -65,7 +65,7 @@ type ChatFilter = 'all' | 'group' | 'personal'
 type ChatRoomKind = 'group' | 'personal'
 type ChatSwipeSide = 'leading' | 'trailing'
 type ChatCompetitionState = 'scheduled' | 'active' | 'settling' | 'ended' | 'invalidated' | 'chat-only'
-type MyPanelKey = 'profile' | 'grade' | 'records' | 'notifications' | 'friends' | 'devices' | 'visibility' | 'support'
+type MyPanelKey = 'profile' | 'grade' | 'records' | 'friends' | 'devices' | 'support' | 'logout'
 
 const investmentGradeTiers = [
   { name: '주린이', minimum: 0, description: '이제 막 시작했어요. 매수와 매도 버튼을 누르기 전 한 번 더 확인하는 단계예요.' },
@@ -1208,6 +1208,35 @@ function ChatListScreen({ onNavigate, rooms, onRoomsChange, onOpenRoom, onForfei
   )
 }
 
+function BlockedChatMessage({ id, sender, text, sentAt, revealed, onReveal }: {
+  id: string
+  sender: string
+  text: string
+  sentAt: string
+  revealed: boolean
+  onReveal: (id: string) => void
+}) {
+  if (revealed) {
+    return (
+      <article className="chat-message incoming is-blocked-revealed">
+        <span className="chat-blocked-avatar"><MyIcon kind="shield" /></span>
+        <div>
+          <span className="chat-message-name">차단한 사용자 · {sender}</span>
+          <p>{text}</p>
+          <time>{sentAt}</time>
+        </div>
+      </article>
+    )
+  }
+
+  return (
+    <button type="button" className="chat-blocked-placeholder" onClick={() => onReveal(id)}>
+      <span className="chat-blocked-avatar"><MyIcon kind="shield" /></span>
+      <span><strong>차단한 사용자의 메시지</strong><small>눌러서 이번 메시지 보기</small></span>
+    </button>
+  )
+}
+
 function ChatRoomScreen({
   onNavigate,
   room,
@@ -1225,6 +1254,7 @@ function ChatRoomScreen({
   onParticipateCompetition,
   onUseMulligan,
   competitionNotice,
+  blockedFriendNames,
 }: {
   onNavigate: (screen: ScreenKey) => void
   room: ChatRoom
@@ -1242,6 +1272,7 @@ function ChatRoomScreen({
   onParticipateCompetition: () => void
   onUseMulligan: () => void
   competitionNotice: string
+  blockedFriendNames: string[]
 }) {
   const [messageDraft, setMessageDraft] = useState('')
   const [isTradeSheetOpen, setIsTradeSheetOpen] = useState(false)
@@ -1252,6 +1283,7 @@ function ChatRoomScreen({
   const [isCompetitionHostSheetOpen, setIsCompetitionHostSheetOpen] = useState(false)
   const [isCompetitionParticipationSheetOpen, setIsCompetitionParticipationSheetOpen] = useState(false)
   const [isMulliganConfirmOpen, setIsMulliganConfirmOpen] = useState(false)
+  const [revealedBlockedMessageIds, setRevealedBlockedMessageIds] = useState<string[]>([])
   const [isTradeSheetDragging, setIsTradeSheetDragging] = useState(false)
   const [isTradeSheetDismissing, setIsTradeSheetDismissing] = useState(false)
   const [tradeSheetDragY, setTradeSheetDragY] = useState(0)
@@ -1263,6 +1295,14 @@ function ChatRoomScreen({
   const tradeSheetDismissTimerRef = useRef<number | null>(null)
   const chatSwipeStartYRef = useRef<number | null>(null)
   const canSendMessage = messageDraft.trim().length > 0
+
+  useEffect(() => {
+    setRevealedBlockedMessageIds([])
+  }, [room.id])
+
+  const revealBlockedMessage = (messageId: string) => {
+    setRevealedBlockedMessageIds((currentIds) => currentIds.includes(messageId) ? currentIds : [...currentIds, messageId])
+  }
   const isActiveCompetition = room.competitionState === 'active'
   const isCompetitionSettling = room.competitionState === 'settling'
   const isCompetitionOutcome = room.competitionState === 'ended' || room.competitionState === 'invalidated'
@@ -1616,14 +1656,9 @@ function ChatRoomScreen({
         >
           {room.id === 'ssangddi' && (
             <>
-              <article className="chat-message incoming">
-                <img src={friendsProfile} alt="장우진" width="32" height="32" />
-                <div>
-                  <span className="chat-message-name">장우진</span>
-                  <p>하 반도체 좋아보이는데 사야되나?</p>
-                  <time>오후 9:39</time>
-                </div>
-              </article>
+              {blockedFriendNames.includes('장우진')
+                ? <BlockedChatMessage id="fixture-jang-1" sender="장우진" text="하 반도체 좋아보이는데 사야되나?" sentAt="오후 9:39" revealed={revealedBlockedMessageIds.includes('fixture-jang-1')} onReveal={revealBlockedMessage} />
+                : <article className="chat-message incoming"><img src={friendsProfile} alt="장우진" width="32" height="32" /><div><span className="chat-message-name">장우진</span><p>하 반도체 좋아보이는데 사야되나?</p><time>오후 9:39</time></div></article>}
               <article className="chat-message outgoing">
                 <p>레알 사게? ㅋㅋ</p>
                 <time>오후 9:41</time>
@@ -1651,14 +1686,16 @@ function ChatRoomScreen({
               {(index === 0 || room.recentHistory?.[index - 1]?.sentOn !== historyItem.sentOn) && (
                 <div className="chat-history-day">{historyItem.sentOn}</div>
               )}
-              <article className={`chat-message ${historyItem.mine ? 'outgoing' : 'incoming'}`}>
-                {!historyItem.mine && <img src={friendsProfile} alt="" width="32" height="32" />}
-                <div>
-                  {!historyItem.mine && <span className="chat-message-name">{historyItem.sender}</span>}
-                  <p>{historyItem.text}</p>
-                  <time>{historyItem.sentAt}</time>
-                </div>
-              </article>
+              {!historyItem.mine && blockedFriendNames.includes(historyItem.sender)
+                ? <BlockedChatMessage id={historyItem.id} sender={historyItem.sender} text={historyItem.text} sentAt={historyItem.sentAt} revealed={revealedBlockedMessageIds.includes(historyItem.id)} onReveal={revealBlockedMessage} />
+                : <article className={`chat-message ${historyItem.mine ? 'outgoing' : 'incoming'}`}>
+                    {!historyItem.mine && <img src={friendsProfile} alt="" width="32" height="32" />}
+                    <div>
+                      {!historyItem.mine && <span className="chat-message-name">{historyItem.sender}</span>}
+                      <p>{historyItem.text}</p>
+                      <time>{historyItem.sentAt}</time>
+                    </div>
+                  </article>}
             </div>
           ))}
           {roomTimeline.map((item) => {
@@ -2166,7 +2203,13 @@ function CompetitionJoinScreen({ initialCode, onBack, onJoin }: {
   )
 }
 
-function FriendCandidate({ profile, requested, onRequest }: { profile: FriendProfile; requested: boolean; onRequest: () => void }) {
+function FriendCandidate({ profile, added, blocked, onAdd, onUnblock }: {
+  profile: FriendProfile
+  added: boolean
+  blocked: boolean
+  onAdd: () => void
+  onUnblock: () => void
+}) {
   return (
     <article className="friend-candidate">
       <span className="friend-candidate-avatar">{profile.name.slice(0, 1)}</span>
@@ -2174,25 +2217,35 @@ function FriendCandidate({ profile, requested, onRequest }: { profile: FriendPro
         <strong>{profile.name}</strong>
         <small>{profile.tiantouId} · {profile.grade}</small>
       </span>
-      <button type="button" disabled={requested} onClick={onRequest}>{requested ? '요청됨' : '친구 요청'}</button>
+      {blocked
+        ? <button type="button" className="is-unblock" onClick={onUnblock}>차단 해제</button>
+        : <button type="button" className={added ? 'is-added' : ''} disabled={added} onClick={onAdd}>{added ? '친구' : '+ 추가'}</button>}
     </article>
   )
 }
 
-function FriendAddScreen({ onBack, requestedFriendIds, onRequestFriend }: {
+function FriendAddScreen({ onBack, friendIds, blockedFriendIds, onAddFriend, onUnblockFriend }: {
   onBack: () => void
-  requestedFriendIds: string[]
-  onRequestFriend: (profile: FriendProfile) => void
+  friendIds: string[]
+  blockedFriendIds: string[]
+  onAddFriend: (profile: FriendProfile) => void
+  onUnblockFriend: (profile: FriendProfile) => void
 }) {
-  const [friendMethod, setFriendMethod] = useState<'qr' | 'contacts' | 'id'>('qr')
+  const [friendMethod, setFriendMethod] = useState<'qr' | 'id'>('qr')
   const [qrCandidate, setQrCandidate] = useState<FriendProfile | null>(null)
-  const [contactsLoaded, setContactsLoaded] = useState(false)
   const [friendIdQuery, setFriendIdQuery] = useState('')
   const [idCandidate, setIdCandidate] = useState<FriendProfile | null>(null)
   const [idError, setIdError] = useState('')
+  const [addedNotice, setAddedNotice] = useState('')
 
-  const requestFriend = (profile: FriendProfile) => {
-    onRequestFriend(profile)
+  const addFriend = (profile: FriendProfile) => {
+    onAddFriend(profile)
+    setAddedNotice(`${profile.name}님을 친구로 추가했어요.`)
+  }
+
+  const unblockFriend = (profile: FriendProfile) => {
+    onUnblockFriend(profile)
+    setAddedNotice(`${profile.name}님의 차단을 해제했어요. 친구가 되려면 다시 추가해 주세요.`)
   }
 
   const searchFriendId = () => {
@@ -2214,7 +2267,7 @@ function FriendAddScreen({ onBack, requestedFriendIds, onRequestFriend }: {
               <span><small>내 천투 ID</small><strong>@hyeongjin367</strong></span>
             </div>
             <MvpQrPattern seed="https://tiantou.app/f/hyeongjin367" label="김형진님의 친구 추가 QR" />
-            <p>상대방이 이 QR을 스캔하면 내 프로필을 확인하고 친구 요청을 보낼 수 있어요.</p>
+            <p>상대방이 이 QR을 스캔해 내 프로필을 확인하면 바로 친구로 추가할 수 있어요.</p>
             <div className="my-qr-actions">
               <button type="button" onClick={() => void navigator.clipboard?.writeText('@hyeongjin367')}>ID 복사</button>
               <button type="button" onClick={() => void navigator.clipboard?.writeText('https://tiantou.app/f/hyeongjin367')}>링크 복사</button>
@@ -2222,30 +2275,20 @@ function FriendAddScreen({ onBack, requestedFriendIds, onRequestFriend }: {
           </section>
 
           <div className="friend-method-tabs" role="tablist" aria-label="친구 추가 방법">
-            {([['qr', 'QR코드'], ['contacts', '연락처'], ['id', 'ID 검색']] as const).map(([method, label]) => (
+            {([['qr', 'QR코드'], ['id', 'ID 검색']] as const).map(([method, label]) => (
               <button type="button" className={friendMethod === method ? 'is-active' : ''} role="tab" aria-selected={friendMethod === method} key={method} onClick={() => setFriendMethod(method)}>{label}</button>
             ))}
           </div>
 
+          <p className="friend-add-rule"><MyIcon kind="check" /> 친구 요청을 기다리지 않고 바로 내 친구 목록에 추가돼요.</p>
+          {addedNotice && <p className="friend-add-notice" role="status">{addedNotice}</p>}
+
           {friendMethod === 'qr' && (
             <section className="friend-method-panel">
               <h2>친구 QR 스캔</h2>
-              <p>QR을 인식한 뒤 상대 프로필을 확인하고 요청을 보냅니다.</p>
+              <p>QR을 인식한 뒤 상대 프로필을 확인하고 바로 추가합니다.</p>
               <button type="button" className="friend-primary-action" onClick={() => setQrCandidate(friendDirectory[0])}>샘플 QR 스캔</button>
-              {qrCandidate && <FriendCandidate profile={qrCandidate} requested={requestedFriendIds.includes(qrCandidate.id)} onRequest={() => requestFriend(qrCandidate)} />}
-            </section>
-          )}
-
-          {friendMethod === 'contacts' && (
-            <section className="friend-method-panel">
-              <h2>연락처에서 찾기</h2>
-              <p>사용자가 직접 허용한 경우에만 연락처를 확인하며 전화번호는 다른 사람에게 표시하지 않습니다.</p>
-              {!contactsLoaded && <button type="button" className="friend-primary-action" onClick={() => setContactsLoaded(true)}>연락처 선택하기</button>}
-              {contactsLoaded && (
-                <div className="friend-candidate-list">
-                  {friendDirectory.map((profile) => <FriendCandidate profile={profile} requested={requestedFriendIds.includes(profile.id)} onRequest={() => requestFriend(profile)} key={profile.id} />)}
-                </div>
-              )}
+              {qrCandidate && <FriendCandidate profile={qrCandidate} added={friendIds.includes(qrCandidate.id)} blocked={blockedFriendIds.includes(qrCandidate.id)} onAdd={() => addFriend(qrCandidate)} onUnblock={() => unblockFriend(qrCandidate)} />}
             </section>
           )}
 
@@ -2258,7 +2301,7 @@ function FriendAddScreen({ onBack, requestedFriendIds, onRequestFriend }: {
                 <button type="submit" disabled={!friendIdQuery.trim()}>검색</button>
               </form>
               {idError && <p className="friend-id-error" role="alert">{idError}</p>}
-              {idCandidate && <FriendCandidate profile={idCandidate} requested={requestedFriendIds.includes(idCandidate.id)} onRequest={() => requestFriend(idCandidate)} />}
+              {idCandidate && <FriendCandidate profile={idCandidate} added={friendIds.includes(idCandidate.id)} blocked={blockedFriendIds.includes(idCandidate.id)} onAdd={() => addFriend(idCandidate)} onUnblock={() => unblockFriend(idCandidate)} />}
             </section>
           )}
         </section>
@@ -2336,15 +2379,13 @@ function MyIcon({ kind }: { kind: MyIconKind }) {
   )
 }
 
-function MySettingSwitch({ checked, label, onChange }: { checked: boolean; label: string; onChange: () => void }) {
-  return (
-    <button type="button" className={`my-setting-switch ${checked ? 'is-on' : ''}`} role="switch" aria-checked={checked} aria-label={label} onClick={onChange}>
-      <span />
-    </button>
-  )
-}
-
-function MyScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
+function MyScreen({ onNavigate, friendItems, blockedFriendItems, onBlockFriend, onUnblockFriend }: {
+  onNavigate: (screen: ScreenKey) => void
+  friendItems: FriendProfile[]
+  blockedFriendItems: FriendProfile[]
+  onBlockFriend: (profile: FriendProfile) => void
+  onUnblockFriend: (profile: FriendProfile) => void
+}) {
   const investmentIndex = 238
   const gradeIndex = investmentGradeTiers.reduce((foundIndex, grade, index) => investmentIndex >= grade.minimum ? index : foundIndex, 0)
   const currentGrade = investmentGradeTiers[Math.max(gradeIndex, 0)]
@@ -2358,9 +2399,17 @@ function MyScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
   const [draftName, setDraftName] = useState(profileName)
   const [draftIntro, setDraftIntro] = useState(profileIntro)
   const [activePanel, setActivePanel] = useState<MyPanelKey | null>(null)
-  const [notifications, setNotifications] = useState({ all: true, chat: true, trade: true })
-  const [profileVisible, setProfileVisible] = useState(true)
-  const [friendRequests, setFriendRequests] = useState(true)
+  const [friendManagerView, setFriendManagerView] = useState<'friends' | 'blocked'>('friends')
+  const [friendSearch, setFriendSearch] = useState('')
+  const [pendingBlockId, setPendingBlockId] = useState<string | null>(null)
+  const [connectedDevices, setConnectedDevices] = useState([
+    { id: 'windows', name: 'Windows · Chrome', detail: '서울 · 지금 사용 중', current: true },
+    { id: 'galaxy', name: 'Galaxy S24 · 천투 앱', detail: '서울 · 오늘 오후 8:12', current: false },
+    { id: 'iphone', name: 'iPhone 16 · 천투 앱', detail: '부산 · 9월 6일 오후 11:03', current: false },
+  ])
+  const [accountNotice, setAccountNotice] = useState('')
+  const [showWithdrawalConfirm, setShowWithdrawalConfirm] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
 
   useEffect(() => {
     if (!activePanel) return
@@ -2381,20 +2430,25 @@ function MyScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
     profile: '프로필 편집',
     grade: '투자 등급',
     records: '대회 기록',
-    notifications: '알림',
-    friends: '친구 및 차단',
-    devices: '계정과 기기',
-    visibility: '게임 공개 범위',
-    support: '고객센터 · 약관',
+    friends: friendManagerView === 'blocked' ? '차단한 사용자' : '친구 관리',
+    devices: '계정 및 기기',
+    support: '고객지원 및 정보',
+    logout: '로그아웃',
   }
 
+  const normalizedFriendSearch = friendSearch.trim().toLocaleLowerCase()
+  const visibleFriends = friendItems.filter((friend) => (
+    !normalizedFriendSearch
+    || `${friend.name} ${friend.tiantouId}`.toLocaleLowerCase().includes(normalizedFriendSearch)
+  ))
+
   const competitionRecords = [
-    { title: '카카오 투자대회', status: '정상 종료', statusTone: 'is-complete', period: '2026.08.01 – 08.30', duration: '30일', rank: '5위', finalNav: '8,420,000원', returnValue: '-15.8%', returnTone: 'is-loss', participants: '6명', scoreDelta: '-13점', scoreTone: 'is-loss', inclusion: '누적 수익률 반영' },
-    { title: '반도체 실전 리그', status: '유효 중도 종료', statusTone: 'is-complete', period: '2026.05.30 – 08.27', duration: '90일', rank: '2위', finalNav: '13,170,000원', returnValue: '+31.7%', returnTone: 'is-gain', participants: '8명', scoreDelta: '+29점', scoreTone: 'is-gain', inclusion: '누적 수익률 반영' },
-    { title: '개미들의 반란', status: '포기', statusTone: 'is-forfeited', period: '2026.05.01 – 05.10', duration: '10일', rank: '순위 제외', finalNav: '10,860,000원', returnValue: '+8.6%', returnTone: 'is-gain', participants: '5명', scoreDelta: '-9점', scoreTone: 'is-loss', inclusion: '누적 수익률 미반영 · 포기 횟수 저장' },
-    { title: '가치투자 챌린지', status: '정상 종료', statusTone: 'is-complete', period: '2026.03.01 – 04.29', duration: '60일', rank: '1위', finalNav: '12,210,000원', returnValue: '+22.1%', returnTone: 'is-gain', participants: '10명', scoreDelta: '+35점', scoreTone: 'is-gain', inclusion: '누적 수익률 반영' },
-    { title: '봄맞이 주식대회', status: '무효', statusTone: 'is-invalidated', period: '2026.02.01 – 02.05', duration: '5일', rank: '순위 없음', finalNav: '—', returnValue: '—', returnTone: '', participants: '7명', scoreDelta: '0점', scoreTone: '', inclusion: '누적 수익률·투자지수 미반영' },
-    { title: '새해 첫 수익', status: '정상 종료', statusTone: 'is-complete', period: '2026.01.05 – 01.11', duration: '7일', rank: '2위', finalNav: '10,540,000원', returnValue: '+5.4%', returnTone: 'is-gain', participants: '4명', scoreDelta: '+6점', scoreTone: 'is-gain', inclusion: '누적 수익률 반영' },
+    { title: '카카오 투자대회', status: '정상 종료', statusTone: 'is-complete', period: '2026.08.01 – 08.30', duration: '30일', market: 'KOSPI·KOSDAQ', rank: '5위', returnValue: '-15.8%', returnTone: 'is-loss', participants: '6명', scoreDelta: '-13점', scoreTone: 'is-loss', impact: '누적 반영' },
+    { title: '반도체 실전 리그', status: '유효 중도 종료', statusTone: 'is-complete', period: '2026.05.30 – 08.27', duration: '90일', market: 'KOSPI·KOSDAQ', rank: '2위', returnValue: '+31.7%', returnTone: 'is-gain', participants: '8명', scoreDelta: '+29점', scoreTone: 'is-gain', impact: '누적 반영' },
+    { title: '개미들의 반란', status: '포기', statusTone: 'is-forfeited', period: '2026.05.01 – 05.10', duration: '10일', market: 'KOSPI·KOSDAQ', rank: '순위 제외', returnValue: '+8.6%', returnTone: 'is-gain', participants: '5명', scoreDelta: '-9점', scoreTone: 'is-loss', impact: '누적 제외' },
+    { title: '가치투자 챌린지', status: '정상 종료', statusTone: 'is-complete', period: '2026.03.01 – 04.29', duration: '60일', market: 'KOSPI·KOSDAQ', rank: '1위', returnValue: '+22.1%', returnTone: 'is-gain', participants: '10명', scoreDelta: '+35점', scoreTone: 'is-gain', impact: '누적 반영' },
+    { title: '봄맞이 주식대회', status: '무효', statusTone: 'is-invalidated', period: '2026.02.01 – 02.05', duration: '5일', market: 'KOSPI·KOSDAQ', rank: '순위 없음', returnValue: '—', returnTone: '', participants: '7명', scoreDelta: '0점', scoreTone: '', impact: '성과 제외' },
+    { title: '새해 첫 수익', status: '정상 종료', statusTone: 'is-complete', period: '2026.01.05 – 01.11', duration: '7일', market: 'KOSPI·KOSDAQ', rank: '2위', returnValue: '+5.4%', returnTone: 'is-gain', participants: '4명', scoreDelta: '+6점', scoreTone: 'is-gain', impact: '누적 반영' },
   ]
 
   const renderPanelContent = () => {
@@ -2425,14 +2479,12 @@ function MyScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
             {competitionRecords.map((competition) => (
               <article className="my-record-card" key={`${competition.title}-${competition.period}`}>
                 <header><span><strong>{competition.title}</strong><small className={competition.statusTone}>{competition.status}</small></span><b className={competition.scoreTone}>{competition.scoreDelta}</b></header>
-                <p>{competition.period} · {competition.duration}</p>
+                <div className="my-record-meta"><span>{competition.period}</span><span>{competition.duration} · {competition.market}</span><small>{competition.impact}</small></div>
                 <dl>
                   <div><dt>최종 순위</dt><dd>{competition.rank}</dd></div>
-                  <div><dt>최종 NAV</dt><dd>{competition.finalNav}</dd></div>
-                  <div><dt>최종 수익률</dt><dd className={competition.returnTone}>{competition.returnValue}</dd></div>
-                  <div><dt>참가 인원</dt><dd>{competition.participants}</dd></div>
+                  <div><dt>수익률</dt><dd className={competition.returnTone}>{competition.returnValue}</dd></div>
+                  <div><dt>참가</dt><dd>{competition.participants}</dd></div>
                 </dl>
-                <footer>{competition.inclusion}</footer>
               </article>
             ))}
           </div>
@@ -2479,43 +2531,96 @@ function MyScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
       )
     }
 
-    if (activePanel === 'notifications') {
-      return (
-        <div className="my-sheet-menu">
-          <div><span><strong>전체 알림</strong><small>천투의 모든 푸시 알림</small></span><MySettingSwitch checked={notifications.all} label="전체 알림" onChange={() => setNotifications((current) => ({ ...current, all: !current.all }))} /></div>
-          <div><span><strong>채팅 알림</strong><small>메시지와 멘션</small></span><MySettingSwitch checked={notifications.chat && notifications.all} label="채팅 알림" onChange={() => setNotifications((current) => ({ ...current, chat: !current.chat }))} /></div>
-          <div><span><strong>매매·대회 알림</strong><small>체결, 순위, 대회 일정</small></span><MySettingSwitch checked={notifications.trade && notifications.all} label="매매와 대회 알림" onChange={() => setNotifications((current) => ({ ...current, trade: !current.trade }))} /></div>
-          <p className="my-sheet-note">방별 채팅 알림은 채팅 목록에서 스와이프해 조절할 수 있어요.</p>
-        </div>
-      )
-    }
-
     if (activePanel === 'friends') {
+      if (friendManagerView === 'blocked') {
+        return (
+          <div className="my-friend-panel">
+            <button type="button" className="my-inline-back" onClick={() => setFriendManagerView('friends')}>← 친구 관리로</button>
+            <p className="my-policy-callout"><MyIcon kind="shield" /><span><strong>차단 해제만으로 친구가 되지는 않아요</strong><small>해제한 뒤 친구 추가 화면에서 다시 추가해 주세요.</small></span></p>
+            <div className="my-person-list">
+              {blockedFriendItems.length === 0 && <p className="my-empty-list">차단한 사용자가 없습니다.</p>}
+              {blockedFriendItems.map((friend) => (
+                <article className="my-person-row" key={friend.id}>
+                  <span className="friend-candidate-avatar">{friend.name.slice(0, 1)}</span>
+                  <span><strong>{friend.name}</strong><small>{friend.tiantouId}</small></span>
+                  <button type="button" className="is-neutral" onClick={() => onUnblockFriend(friend)}>차단 해제</button>
+                </article>
+              ))}
+            </div>
+          </div>
+        )
+      }
+
       return (
-        <div className="my-sheet-menu">
-          <button type="button" onClick={() => { setActivePanel(null); onNavigate('friend-add') }}><span><strong>친구 목록</strong><small>12명 · 새로운 친구 찾기</small></span><MyIcon kind="chevron" /></button>
-          <button type="button"><span><strong>받은 친구 요청</strong><small>새 요청 없음</small></span><MyIcon kind="chevron" /></button>
-          <button type="button"><span><strong>차단한 사용자</strong><small>1명</small></span><MyIcon kind="chevron" /></button>
+        <div className="my-friend-panel">
+          <button type="button" className="my-add-friend-cta" onClick={() => { setActivePanel(null); onNavigate('friend-add') }}>
+            <span><strong>친구 추가</strong><small>QR 또는 천투 ID로 찾으면 바로 추가돼요.</small></span><span aria-hidden="true">+</span>
+          </button>
+          <label className="my-friend-search"><span className="sr-only">친구 검색</span><input value={friendSearch} placeholder="이름 또는 천투 ID 검색" onChange={(event) => setFriendSearch(event.target.value)} /></label>
+          <div className="my-person-list">
+            {visibleFriends.length === 0 && <p className="my-empty-list">일치하는 친구가 없습니다.</p>}
+            {visibleFriends.map((friend) => (
+              <div key={friend.id}>
+                <article className="my-person-row">
+                  <span className="friend-candidate-avatar">{friend.name.slice(0, 1)}</span>
+                  <span><strong>{friend.name}</strong><small>{friend.tiantouId} · {friend.grade}</small></span>
+                  <button type="button" onClick={() => setPendingBlockId(friend.id)}>차단</button>
+                </article>
+                {pendingBlockId === friend.id && (
+                  <section className="my-block-confirm" role="alertdialog" aria-label={`${friend.name}님 차단 확인`}>
+                    <strong>{friend.name}님을 차단할까요?</strong>
+                    <p>친구 관계가 끊기고 초대를 받을 수 없어요. 공통 라운지에서는 대화만 접히고 매매·순위·게임 기록은 계속 보여요.</p>
+                    <div><button type="button" onClick={() => setPendingBlockId(null)}>취소</button><button type="button" onClick={() => { onBlockFriend(friend); setPendingBlockId(null) }}>차단</button></div>
+                  </section>
+                )}
+              </div>
+            ))}
+          </div>
+          <button type="button" className="my-blocked-entry" onClick={() => setFriendManagerView('blocked')}><span><strong>차단한 사용자</strong><small>{blockedFriendItems.length}명 · 해제해도 친구 관계는 복구되지 않아요.</small></span><MyIcon kind="chevron" /></button>
         </div>
       )
     }
 
     if (activePanel === 'devices') {
+      const otherDevices = connectedDevices.filter((device) => !device.current)
       return (
         <div className="my-device-panel">
-          <div className="my-account-id"><small>천투 ID</small><strong>@kimhj</strong><span>친구가 나를 찾을 때 사용하는 ID예요.</span></div>
-          <div className="my-current-device"><span className="my-menu-icon"><MyIcon kind="devices" /></span><span><strong>Windows · 이 기기</strong><small>서울 · 지금 사용 중</small></span><b>현재</b></div>
-          <p className="my-sheet-note">새 기기에서 로그인하면 여기에서 접속 상태를 확인하고 연결을 해제할 수 있어요.</p>
+          <div className="my-account-id"><small>로그인 계정</small><strong>카카오 계정</strong><span>천투 ID @kimhj · 연결된 소셜 계정</span></div>
+          <section className="my-device-list">
+            <header><strong>로그인한 기기</strong><small>{connectedDevices.length}대</small></header>
+            {connectedDevices.map((device) => (
+              <div className="my-current-device" key={device.id}>
+                <span className="my-menu-icon"><MyIcon kind="devices" /></span>
+                <span><strong>{device.name}</strong><small>{device.detail}</small></span>
+                {device.current
+                  ? <b>현재</b>
+                  : <button type="button" onClick={() => { setConnectedDevices((current) => current.filter((item) => item.id !== device.id)); setAccountNotice(`${device.name}의 세션을 종료했어요.`) }}>로그아웃</button>}
+              </div>
+            ))}
+          </section>
+          <button type="button" className="my-secondary-button" disabled={otherDevices.length === 0} onClick={() => { setConnectedDevices((current) => current.filter((device) => device.current)); setAccountNotice('다른 모든 기기의 세션을 종료했어요.') }}>다른 모든 기기에서 로그아웃</button>
+          {accountNotice && <p className="my-action-notice" role="status">{accountNotice}</p>}
+          <p className="my-policy-callout"><MyIcon kind="shield" /><span><strong>원격 로그아웃은 즉시 적용</strong><small>선택한 기기의 로그인 세션과 실시간 연결을 바로 종료해요.</small></span></p>
+          <section className="my-danger-zone">
+            <header><strong>계정 탈퇴</strong><small>계정과 참가 중인 대회를 정리해요.</small></header>
+            {!showWithdrawalConfirm
+              ? <button type="button" onClick={() => setShowWithdrawalConfirm(true)}>탈퇴 영향 확인</button>
+              : <div className="my-withdrawal-confirm"><ul><li>진행 중인 모든 대회가 즉시 포기 처리돼요.</li><li>방장이라면 기존 정책에 따라 먼저 위임해야 해요.</li><li>남은 참가자는 나를 이긴 것으로 정산돼요.</li><li>이력의 이름은 (탈퇴한 사용자)로 익명화돼요.</li><li>같은 소셜 계정은 7일 뒤 다시 가입할 수 있어요.</li></ul><div><button type="button" onClick={() => setShowWithdrawalConfirm(false)}>취소</button><button type="button" onClick={() => setAccountNotice('MVP 화면 검증용입니다. 실제 탈퇴 API는 아직 연결되지 않았어요.')}>탈퇴 계속</button></div></div>}
+          </section>
         </div>
       )
     }
 
-    if (activePanel === 'visibility') {
+    if (activePanel === 'logout') {
       return (
-        <div className="my-sheet-menu">
-          <div><span><strong>프로필 공개</strong><small>대회 참가자와 친구에게 표시</small></span><MySettingSwitch checked={profileVisible} label="프로필 공개" onChange={() => setProfileVisible((current) => !current)} /></div>
-          <div><span><strong>친구 요청 허용</strong><small>천투 ID를 통한 요청</small></span><MySettingSwitch checked={friendRequests} label="친구 요청 허용" onChange={() => setFriendRequests((current) => !current)} /></div>
-          <div className="my-rule-card"><MyIcon kind="shield" /><span><strong>대회 활동은 게임 규칙이에요</strong><small>매매, 잔고·순위 확인 마일스톤은 같은 대회 참가자에게 표시되며 끌 수 없어요.</small></span></div>
+        <div className="my-logout-panel">
+          <span className="my-logout-symbol"><MyIcon kind="devices" /></span>
+          <strong>이 기기에서 로그아웃할까요?</strong>
+          <p>다른 기기의 로그인은 유지돼요. 다시 이용하려면 소셜 계정으로 로그인해 주세요.</p>
+          {!showLogoutConfirm
+            ? <button type="button" className="my-destructive-button" onClick={() => setShowLogoutConfirm(true)}>로그아웃</button>
+            : <div className="my-logout-confirm"><button type="button" onClick={() => setShowLogoutConfirm(false)}>취소</button><button type="button" onClick={() => setAccountNotice('MVP 화면 검증용입니다. 현재 기기 로그아웃 API는 아직 연결되지 않았어요.')}>로그아웃 확인</button></div>}
+          {accountNotice && <p className="my-action-notice" role="status">{accountNotice}</p>}
         </div>
       )
     }
@@ -2523,19 +2628,20 @@ function MyScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
     return (
       <div className="my-sheet-menu">
         <button type="button"><span><strong>도움말 · 문의</strong><small>자주 묻는 질문과 문의하기</small></span><MyIcon kind="chevron" /></button>
+        <button type="button"><span><strong>사용자 · 메시지 신고</strong><small>라운지에서 불편한 활동을 알려주세요.</small></span><MyIcon kind="chevron" /></button>
         <button type="button"><span><strong>이용약관</strong><small>서비스 이용 정책</small></span><MyIcon kind="chevron" /></button>
         <button type="button"><span><strong>개인정보처리방침</strong><small>개인정보 보호 및 처리 안내</small></span><MyIcon kind="chevron" /></button>
+        <button type="button"><span><strong>오픈소스 라이선스</strong><small>앱에서 사용하는 라이브러리 안내</small></span><MyIcon kind="chevron" /></button>
         <p className="my-version">천투 MVP · 버전 0.1.0</p>
       </div>
     )
   }
 
   const menuItems: Array<{ key: MyPanelKey; icon: MyIconKind; label: string; detail: string }> = [
-    { key: 'notifications', icon: 'bell', label: '알림', detail: '채팅·매매·대회' },
-    { key: 'friends', icon: 'users', label: '친구 및 차단', detail: '친구 12명' },
-    { key: 'devices', icon: 'devices', label: '계정과 기기', detail: '이 기기에서 접속 중' },
-    { key: 'visibility', icon: 'eye', label: '게임 공개 범위', detail: '활동 공개 규칙' },
-    { key: 'support', icon: 'help', label: '고객센터 · 약관', detail: '버전 0.1.0' },
+    { key: 'friends', icon: 'users', label: '친구 관리', detail: `친구 ${friendItems.length}명 · 차단 ${blockedFriendItems.length}명` },
+    { key: 'devices', icon: 'devices', label: '계정 및 기기', detail: `${connectedDevices.length}대에서 로그인 중` },
+    { key: 'support', icon: 'help', label: '고객지원 및 정보', detail: '문의 · 약관 · 개인정보' },
+    { key: 'logout', icon: 'shield', label: '로그아웃', detail: '현재 기기에서 로그아웃' },
   ]
 
   return (
@@ -2576,7 +2682,15 @@ function MyScreen({ onNavigate }: { onNavigate: (screen: ScreenKey) => void }) {
           <header><h2>설정</h2></header>
           <div className="my-settings-list">
             {menuItems.map((item) => (
-              <button type="button" key={item.key} onClick={() => setActivePanel(item.key)}>
+              <button type="button" key={item.key} onClick={() => {
+                if (item.key === 'friends') {
+                  setFriendManagerView('friends')
+                  setPendingBlockId(null)
+                  setFriendSearch('')
+                }
+                if (item.key === 'devices' || item.key === 'logout') setAccountNotice('')
+                setActivePanel(item.key)
+              }}>
                 <span className="my-menu-icon"><MyIcon kind={item.icon} /></span>
                 <span><strong>{item.label}</strong><small>{item.detail}</small></span>
                 <MyIcon kind="chevron" />
@@ -2689,8 +2803,8 @@ export default function App() {
   const [mode, setMode] = useState<FeedMode>('invest')
   const [chatRoomItems, setChatRoomItems] = useState<ChatRoom[]>(chatRooms)
   const [investRoomItems, setInvestRoomItems] = useState(investRooms)
-  const [friendItems] = useState<FriendProfile[]>(friends)
-  const [requestedFriendIds, setRequestedFriendIds] = useState<string[]>([])
+  const [friendItems, setFriendItems] = useState<FriendProfile[]>(friends.filter((friend) => friend.id === 'kim-young-gyu' || friend.id === 'jo-jin-man'))
+  const [blockedFriendItems, setBlockedFriendItems] = useState<FriendProfile[]>(friends.filter((friend) => friend.id === 'jang-woo-jin'))
   const [activeRoomId, setActiveRoomId] = useState('ssangddi')
   const [roomTimelines, setRoomTimelines] = useState<Record<string, RoomTimelineItem[]>>({})
   const [openOrders, setOpenOrders] = useState<OpenOrder[]>(initialOpenOrders)
@@ -2718,7 +2832,7 @@ export default function App() {
 
   const navigate = (nextScreen: ScreenKey) => {
     if (nextScreen === 'competition-join' || nextScreen === 'lounge-create' || nextScreen === 'friend-add') {
-      setUtilityReturnScreen(screen === 'chat-list' ? 'chat-list' : 'home')
+      setUtilityReturnScreen(screen === 'chat-list' || screen === 'my' ? screen : 'home')
     }
     setScreen(nextScreen)
     const params = new URLSearchParams(window.location.search)
@@ -3130,9 +3244,11 @@ export default function App() {
   if (screen === 'friend-add') {
     return (
       <FriendAddScreen
-        onBack={() => navigate('home')}
-        requestedFriendIds={requestedFriendIds}
-        onRequestFriend={(profile) => setRequestedFriendIds((currentIds) => currentIds.includes(profile.id) ? currentIds : [...currentIds, profile.id])}
+        onBack={() => navigate(utilityReturnScreen)}
+        friendIds={friendItems.map((friend) => friend.id)}
+        blockedFriendIds={blockedFriendItems.map((friend) => friend.id)}
+        onAddFriend={(profile) => setFriendItems((currentFriends) => currentFriends.some((friend) => friend.id === profile.id) ? currentFriends : [...currentFriends, profile])}
+        onUnblockFriend={(profile) => setBlockedFriendItems((currentBlocked) => currentBlocked.filter((friend) => friend.id !== profile.id))}
       />
     )
   }
@@ -3166,10 +3282,22 @@ export default function App() {
         onParticipateCompetition={participateRoomCompetition}
         onUseMulligan={useRoomCompetitionMulligan}
         competitionNotice={competitionNotice}
+        blockedFriendNames={blockedFriendItems.map((friend) => friend.name)}
       />
     )
   }
-  if (screen === 'my') return <MyScreen onNavigate={navigate} />
+  if (screen === 'my') return (
+    <MyScreen
+      onNavigate={navigate}
+      friendItems={friendItems}
+      blockedFriendItems={blockedFriendItems}
+      onBlockFriend={(profile) => {
+        setFriendItems((currentFriends) => currentFriends.filter((friend) => friend.id !== profile.id))
+        setBlockedFriendItems((currentBlocked) => currentBlocked.some((friend) => friend.id === profile.id) ? currentBlocked : [...currentBlocked, profile])
+      }}
+      onUnblockFriend={(profile) => setBlockedFriendItems((currentBlocked) => currentBlocked.filter((friend) => friend.id !== profile.id))}
+    />
+  )
   if (screen === 'invest') return <InvestmentScreen onNavigate={navigate} />
   if (screen === 'splash') return <SplashScreen />
   return (

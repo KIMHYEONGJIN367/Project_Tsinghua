@@ -5218,6 +5218,14 @@ body:has(.splash-shell) {
   color: #b8323c;
 }
 
+.portfolio-session-note {
+  flex-shrink: 0;
+  margin: 0 16px;
+  padding: 8px 0 2px;
+  color: #8f8586;
+  font-size: 11px;
+}
+
 .portfolio-holdings {
   min-height: 0;
   flex: 1;
@@ -6709,7 +6717,7 @@ body:has(.my-screen) {
 .my-record-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
 .my-record-panel > p {
@@ -6720,7 +6728,7 @@ body:has(.my-screen) {
 }
 
 .my-record-card {
-  padding: 12px 13px;
+  padding: 10px 12px;
   border: 1px solid #eee7db;
   border-radius: 15px;
   background: #ffffff;
@@ -6786,17 +6794,35 @@ body:has(.my-screen) {
   color: #315fa4;
 }
 
-.my-record-card > p {
-  margin: 4px 0 11px;
+.my-record-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 5px 0 8px;
   color: #968d89;
   font-size: 11px;
 }
 
+.my-record-meta > span:first-child {
+  margin-right: auto;
+}
+
+.my-record-meta > span:nth-child(2) {
+  color: #817975;
+}
+
+.my-record-meta > small {
+  flex: 0 0 auto;
+  color: #a32d37;
+  font-size: 11px;
+  font-weight: 700;
+}
+
 .my-record-card dl {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin: 0;
-  padding: 10px 0 0;
+  padding: 8px 0 0;
   border-top: 1px solid #f0ebe7;
 }
 
@@ -6804,21 +6830,13 @@ body:has(.my-screen) {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 4px;
-  padding: 8px 4px;
+  gap: 3px;
+  padding: 4px;
   text-align: center;
 }
 
 .my-record-card dl > div + div {
   border-left: 1px solid #f0ebe7;
-}
-
-.my-record-card dl > div:nth-child(odd) {
-  border-left: 0;
-}
-
-.my-record-card dl > div:nth-child(n + 3) {
-  border-top: 1px solid #f0ebe7;
 }
 
 .my-record-card dt {
@@ -6831,15 +6849,6 @@ body:has(.my-screen) {
   color: #3b3634;
   font-size: 11px;
   font-weight: 700;
-}
-
-.my-record-card > footer {
-  margin-top: 7px;
-  padding-top: 8px;
-  border-top: 1px solid #f0ebe7;
-  color: #837a76;
-  font-size: 11px;
-  text-align: right;
 }
 
 .my-grade-detail {
@@ -7420,7 +7429,7 @@ body:has(.utility-shell) {
 }
 
 .friend-method-tabs {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 18px;
 }
 
@@ -9681,3 +9690,286 @@ body:has(.investment-screen) { background: #fff; }
   .investment-add-sheet,
   .investment-undo { animation-duration: 1ms; transition-duration: 1ms; }
 }
+
+/* My — friend, account and safety settings */
+.friend-add-rule,
+.friend-add-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin: 10px 2px 0;
+  padding: 10px 11px;
+  border-radius: 11px;
+  background: #fff3f2;
+  color: #786e6c;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.friend-add-rule .my-line-icon {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 auto;
+  color: #b8323c;
+}
+
+.friend-add-notice {
+  background: #f5f7f2;
+  color: #59634f;
+}
+
+.friend-candidate button.is-added {
+  border: 1px solid #eadfdc;
+  background: #fff;
+  color: #7d7471;
+}
+
+.friend-candidate button.is-unblock {
+  border: 1px solid #e3dcd8;
+  background: #fff;
+  color: #655d5a;
+}
+
+.my-friend-panel,
+.my-device-panel,
+.my-logout-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.my-add-friend-cta {
+  display: flex;
+  width: 100%;
+  min-height: 66px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid #ead8d6;
+  border-radius: 15px;
+  background: linear-gradient(145deg, #fff4f2, #fffaf8);
+  color: #332c2d;
+  text-align: left;
+}
+
+.my-add-friend-cta > span:first-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.my-add-friend-cta strong { font-size: 14px; }
+.my-add-friend-cta small { color: #817572; font-size: 12px; line-height: 1.4; }
+.my-add-friend-cta > span:last-child {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  background: #b8323c;
+  color: #fff;
+  font-size: 21px;
+  line-height: 1;
+}
+
+.my-friend-search input {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 13px;
+  border: 1px solid #e9e2de;
+  border-radius: 12px;
+  outline: none;
+  background: #faf8f6;
+  color: #302b2a;
+  font-size: 14px;
+}
+
+.my-friend-search input:focus {
+  border-color: #c86d74;
+  box-shadow: 0 0 0 2px rgba(184, 50, 60, .08);
+}
+
+.my-person-list {
+  overflow: hidden;
+  border: 1px solid #eee7e2;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.my-person-list > div + div,
+.my-person-list > article + article { border-top: 1px solid #f1ece8; }
+
+.my-person-row {
+  display: grid;
+  min-height: 60px;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+}
+
+.my-person-row > span:nth-child(2) {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.my-person-row strong { color: #302b2a; font-size: 13px; }
+.my-person-row small {
+  overflow: hidden;
+  color: #918784;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.my-person-row > button {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid #ead8d6;
+  border-radius: 9px;
+  background: #fff7f6;
+  color: #a52e37;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.my-person-row > button.is-neutral { color: #675f5c; background: #fff; }
+.my-empty-list { margin: 0; padding: 24px 12px; color: #938a87; font-size: 12px; text-align: center; }
+
+.my-block-confirm {
+  margin: 0 10px 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: #f8f2ef;
+}
+
+.my-block-confirm > strong { color: #3d3533; font-size: 13px; }
+.my-block-confirm > p { margin: 6px 0 10px; color: #796f6c; font-size: 12px; line-height: 1.5; }
+.my-block-confirm > div,
+.my-withdrawal-confirm > div,
+.my-logout-confirm { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.my-block-confirm button,
+.my-withdrawal-confirm button,
+.my-logout-confirm button {
+  min-height: 38px;
+  border: 1px solid #e3d9d5;
+  border-radius: 10px;
+  background: #fff;
+  color: #6f6663;
+  font-size: 12px;
+  font-weight: 700;
+}
+.my-block-confirm button:last-child,
+.my-withdrawal-confirm button:last-child,
+.my-logout-confirm button:last-child { border-color: #b8323c; background: #b8323c; color: #fff; }
+
+.my-blocked-entry,
+.my-inline-back {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  border: 1px solid #eee7e2;
+  border-radius: 12px;
+  background: #fff;
+  color: #3a3432;
+  text-align: left;
+}
+.my-blocked-entry > span { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.my-blocked-entry strong { font-size: 12px; }
+.my-blocked-entry small { color: #948a87; font-size: 11px; }
+.my-blocked-entry .my-line-icon { width: 14px; height: 14px; color: #9b918e; }
+.my-inline-back { width: fit-content; min-height: 34px; padding: 0 6px; border: 0; color: #a62e37; font-size: 12px; font-weight: 700; }
+
+.my-policy-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0;
+  padding: 11px 12px;
+  border-radius: 12px;
+  background: #f7f3ef;
+  color: #423b39;
+}
+.my-policy-callout .my-line-icon { width: 17px; height: 17px; flex: 0 0 auto; color: #b8323c; }
+.my-policy-callout > span { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.my-policy-callout strong { font-size: 12px; }
+.my-policy-callout small { color: #827875; font-size: 11px; line-height: 1.45; }
+
+.my-device-list {
+  overflow: hidden;
+  border: 1px solid #eee7e2;
+  border-radius: 14px;
+  background: #fff;
+}
+.my-device-list > header { display: flex; align-items: center; justify-content: space-between; padding: 11px 12px 8px; }
+.my-device-list > header strong { font-size: 12px; }
+.my-device-list > header small { color: #938a87; font-size: 11px; }
+.my-device-list .my-current-device { border: 0; border-top: 1px solid #f1ece8; border-radius: 0; }
+.my-current-device > button {
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid #e8d9d7;
+  border-radius: 8px;
+  background: #fff;
+  color: #a52e37;
+  font-size: 11px;
+  font-weight: 700;
+}
+.my-secondary-button,
+.my-destructive-button {
+  min-height: 42px;
+  border: 1px solid #dfd5d1;
+  border-radius: 12px;
+  background: #fff;
+  color: #4d4542;
+  font-size: 12px;
+  font-weight: 700;
+}
+.my-secondary-button:disabled { color: #b1a9a6; background: #f5f2f0; }
+.my-action-notice { margin: -2px 0 0; padding: 10px 11px; border-radius: 10px; background: #f3f6ef; color: #56604e; font-size: 11px; line-height: 1.45; }
+
+.my-danger-zone { overflow: hidden; border: 1px solid #edd8d7; border-radius: 14px; background: #fffafa; }
+.my-danger-zone > header { display: flex; flex-direction: column; gap: 3px; padding: 12px; }
+.my-danger-zone > header strong { color: #9e3038; font-size: 12px; }
+.my-danger-zone > header small { color: #897d7a; font-size: 11px; }
+.my-danger-zone > button { width: 100%; min-height: 40px; border: 0; border-top: 1px solid #f0dedd; background: transparent; color: #a22e37; font-size: 12px; font-weight: 700; }
+.my-withdrawal-confirm { padding: 0 12px 12px; }
+.my-withdrawal-confirm ul { margin: 0 0 10px; padding-left: 18px; color: #706663; font-size: 11px; line-height: 1.55; }
+
+.my-logout-panel { align-items: center; padding: 8px 2px; text-align: center; }
+.my-logout-symbol { display: grid; width: 54px; height: 54px; place-items: center; border-radius: 18px; background: #fff0ef; color: #b8323c; }
+.my-logout-symbol .my-line-icon { width: 24px; height: 24px; }
+.my-logout-panel > strong { color: #302b2a; font-size: 16px; }
+.my-logout-panel > p { margin: -4px 20px 4px; color: #817774; font-size: 12px; line-height: 1.5; }
+.my-destructive-button { width: 100%; border-color: #b8323c; background: #b8323c; color: #fff; }
+.my-logout-confirm { width: 100%; }
+
+/* Blocked text stays private; gameplay events remain untouched in the same timeline. */
+.chat-blocked-placeholder {
+  display: flex;
+  max-width: 88%;
+  align-self: flex-start;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px 8px 8px;
+  border: 1px solid #e7dfdc;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, .78);
+  color: #554d4a;
+  text-align: left;
+}
+.chat-blocked-placeholder > span:last-child { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.chat-blocked-placeholder strong { font-size: 12px; font-weight: 700; }
+.chat-blocked-placeholder small { color: #968c89; font-size: 11px; }
+.chat-blocked-avatar { display: grid; width: 32px; height: 32px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: #eee9e6; color: #8a817e; }
+.chat-blocked-avatar .my-line-icon { width: 15px; height: 15px; }
+.chat-message.is-blocked-revealed > div { opacity: .82; }
+.chat-message.is-blocked-revealed p { background: #f1eeec !important; color: #625a57 !important; }

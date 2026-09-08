@@ -248,6 +248,8 @@ export function PortfolioSheet({
         <button type="button" role="tab" aria-selected={tab === 'open'} className={tab === 'open' ? 'is-selected' : ''} onClick={() => setTab('open')}>미체결 <small>{openOrders.length}</small></button>
       </div>
 
+      {tab === 'open' && <p className="portfolio-session-note">정규장 마감 시 남은 주문은 자동 취소돼요.</p>}
+
       <div className="portfolio-holdings" aria-live="polite">
         {tab === 'open' ? (
           openOrders.length === 0 ? (

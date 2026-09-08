@@ -350,7 +350,7 @@ function OpenOrdersManager({ initialOrderId, openOrders, onUpdate, onCancel, onC
           }}
         ><span aria-hidden="true" /></button>
         <header className="ticket-orders-header">
-          <span><strong>미체결 주문</strong><small>가격·수량을 바로 정정하거나 취소할 수 있어요.</small></span>
+          <span><strong>미체결 주문</strong><small>정정·취소 가능 · 정규장 마감 시 자동 취소</small></span>
           <div className="ticket-orders-header-actions">
             <b>{openOrders.length}건</b>
             <button type="button" disabled={openOrders.length === 0} aria-label={`미체결 주문 ${openOrders.length}건 일괄취소`} onClick={() => {
