@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { CompetitionResultSheet, PortfolioSheet, RankingSheet, TradeHistorySheet } from './AccountSheets'
+import {
+  CompetitionResultSheet,
+  PortfolioSheet,
+  RankingSheet,
+  SharedPortfolioSheet,
+  TradeHistorySheet,
+  type SharedPortfolioPosition,
+  type SharedPortfolioSnapshot,
+} from './AccountSheets'
 import {
   CompetitionHostSheet,
   CompetitionMulliganIcon,
@@ -22,6 +30,7 @@ import TradeDrafts from './TradeDrafts'
 import InvestmentScreen from './InvestmentScreen'
 import {
   CURRENT_RANK,
+  ORDERABLE_CASH,
   TOTAL_ASSET,
   TOTAL_RETURN,
   formatReturn,
@@ -92,7 +101,7 @@ type ChatHistoryItem = {
 type RoomTimelineItem =
   | { id: string; kind: 'message'; text: string; sentAt: string }
   | { id: string; kind: 'view-event'; viewKind: SocialViewKind; count: number; sentAt: string }
-  | { id: string; kind: 'portfolio-share'; sentAt: string }
+  | { id: string; kind: 'portfolio-share'; sentAt: string; snapshot: SharedPortfolioSnapshot }
   | { id: string; kind: 'join-event'; roomKind: '대회' | '라운지'; sentAt: string }
   | { id: string; kind: 'lounge-create-event'; sentAt: string }
   | { id: string; kind: 'competition-event'; eventType: 'scheduled' | 'started' | 'cancelled' | 'ended' | 'invalidated' | 'forfeited' | 'host-transferred'; title: string; detail: string; sentAt: string }
@@ -124,6 +133,77 @@ type CompetitionInvite = {
 type SocialViewTracker = { count: number; lastCountedAt: number; dateKey: string }
 
 const SOCIAL_VIEW_COOLDOWN_MS = 30_000
+const PORTFOLIO_SHARE_TTL_MS = 5 * 60 * 1000
+const PORTFOLIO_SHARE_LONG_PRESS_MS = 520
+
+function createSharedPosition(instrumentCode: string, quantity: number): SharedPortfolioPosition | null {
+  const instrument = instruments.find((item) => item.code === instrumentCode)
+  if (!instrument) return null
+  return {
+    name: instrument.name,
+    code: instrument.code,
+    price: instrument.price,
+    change: instrument.change,
+    quantity,
+    marketValue: instrument.price * quantity,
+  }
+}
+
+function createSharedPortfolioSnapshot({
+  ownerName,
+  sharedAt,
+  sharedAtLabel,
+  orderableCash,
+  longEntries,
+  shortEntries,
+}: {
+  ownerName: string
+  sharedAt: number
+  sharedAtLabel: string
+  orderableCash: number
+  longEntries: Array<[string, number]>
+  shortEntries: Array<[string, number]>
+}): SharedPortfolioSnapshot {
+  const longPositions = longEntries.map(([code, quantity]) => createSharedPosition(code, quantity)).filter((position): position is SharedPortfolioPosition => position !== null)
+  const shortPositions = shortEntries.map(([code, quantity]) => createSharedPosition(code, quantity)).filter((position): position is SharedPortfolioPosition => position !== null)
+  const longMarketValue = longPositions.reduce((sum, position) => sum + position.marketValue, 0)
+  const shortMarketValue = shortPositions.reduce((sum, position) => sum + position.marketValue, 0)
+
+  return {
+    ownerName,
+    sharedAt,
+    sharedAtLabel,
+    expiresAt: sharedAt + PORTFOLIO_SHARE_TTL_MS,
+    totalAsset: orderableCash + longMarketValue - shortMarketValue,
+    orderableCash,
+    longMarketValue,
+    shortMarketValue,
+    longPositions,
+    shortPositions,
+  }
+}
+
+function createMySharedPortfolioSnapshot(sharedAt: number, sharedAtLabel: string, isReset = false, initialCapital?: number) {
+  return createSharedPortfolioSnapshot({
+    ownerName: '김형진',
+    sharedAt,
+    sharedAtLabel,
+    orderableCash: isReset ? initialCapital ?? ORDERABLE_CASH : ORDERABLE_CASH,
+    longEntries: isReset ? [] : instruments.flatMap((instrument) => instrument.longQuantity ? [[instrument.code, instrument.longQuantity] as [string, number]] : []),
+    shortEntries: isReset ? [] : instruments.flatMap((instrument) => instrument.shortQuantity ? [[instrument.code, instrument.shortQuantity] as [string, number]] : []),
+  })
+}
+
+function createYoungGyuSharedPortfolioSnapshot(sharedAt: number) {
+  return createSharedPortfolioSnapshot({
+    ownerName: '김영규',
+    sharedAt,
+    sharedAtLabel: '방금',
+    orderableCash: 5_569_500,
+    longEntries: [['005930', 60], ['000660', 30], ['005380', 10], ['035420', 15]],
+    shortEntries: [['086520', 10], ['035720', 10]],
+  })
+}
 
 function isSocialViewMilestone(count: number) {
   return count === 3 || (count >= 5 && count % 5 === 0)
@@ -1237,6 +1317,95 @@ function BlockedChatMessage({ id, sender, text, sentAt, revealed, onReveal }: {
   )
 }
 
+function PortfolioShareMessage({
+  item,
+  now,
+  isMine,
+  onOpen,
+  onRequestCancel,
+}: {
+  item: Extract<RoomTimelineItem, { kind: 'portfolio-share' }>
+  now: number
+  isMine: boolean
+  onOpen: (item: Extract<RoomTimelineItem, { kind: 'portfolio-share' }>) => void
+  onRequestCancel: (shareId: string) => void
+}) {
+  const longPressTimerRef = useRef<number | null>(null)
+  const pressOriginRef = useRef<{ x: number; y: number } | null>(null)
+  const didLongPressRef = useRef(false)
+  const remainingMinutes = Math.min(5, Math.max(1, Math.ceil((item.snapshot.expiresAt - now) / 60_000)))
+
+  const clearLongPress = () => {
+    pressOriginRef.current = null
+    if (longPressTimerRef.current !== null) {
+      window.clearTimeout(longPressTimerRef.current)
+      longPressTimerRef.current = null
+    }
+  }
+
+  useEffect(() => () => {
+    if (longPressTimerRef.current !== null) window.clearTimeout(longPressTimerRef.current)
+  }, [])
+
+  const requestCancel = () => {
+    if (!isMine) return
+    didLongPressRef.current = true
+    clearLongPress()
+    onRequestCancel(item.id)
+  }
+
+  return (
+    <button
+      type="button"
+      className={`chat-portfolio-share ${isMine ? 'is-mine' : ''}`}
+      aria-label={`${item.snapshot.ownerName}님의 공유 잔고 열기, ${remainingMinutes}분 남음${isMine ? ', 길게 눌러 공유 취소' : ''}`}
+      aria-haspopup={isMine ? 'dialog' : undefined}
+      onPointerDown={(event) => {
+        if (!isMine || event.button !== 0) return
+        didLongPressRef.current = false
+        pressOriginRef.current = { x: event.clientX, y: event.clientY }
+        longPressTimerRef.current = window.setTimeout(requestCancel, PORTFOLIO_SHARE_LONG_PRESS_MS)
+      }}
+      onPointerMove={(event) => {
+        const origin = pressOriginRef.current
+        if (!origin || Math.hypot(event.clientX - origin.x, event.clientY - origin.y) < 10) return
+        clearLongPress()
+      }}
+      onPointerUp={clearLongPress}
+      onPointerCancel={clearLongPress}
+      onPointerLeave={clearLongPress}
+      onContextMenu={(event) => {
+        event.preventDefault()
+        if (!isMine) return
+        requestCancel()
+      }}
+      onKeyDown={(event) => {
+        if (isMine && (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10'))) {
+          event.preventDefault()
+          requestCancel()
+        }
+      }}
+      onClick={() => {
+        if (didLongPressRef.current) {
+          didLongPressRef.current = false
+          return
+        }
+        onOpen(item)
+      }}
+    >
+      <span className="chat-portfolio-share-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9h-9V3Z" /><path d="M14 3.4V10h6.6A9 9 0 0 0 14 3.4Z" /></svg>
+      </span>
+      <span className="chat-portfolio-share-copy">
+        <strong>{item.snapshot.ownerName}님의 잔고 보기</strong>
+        <small><b>{remainingMinutes}분 남음</b> · {isMine ? '길게 눌러 취소' : '공유 시점 기준'}</small>
+      </span>
+      <span className="chat-portfolio-share-chevron" aria-hidden="true">›</span>
+      <time>{item.sentAt}</time>
+    </button>
+  )
+}
+
 function ChatRoomScreen({
   onNavigate,
   room,
@@ -1245,6 +1414,7 @@ function ChatRoomScreen({
   onSendMessage,
   onRecordSocialView,
   onSharePortfolio,
+  onCancelPortfolioShare,
   openOrders,
   onUpdateOpenOrder,
   onCancelOpenOrder,
@@ -1263,6 +1433,7 @@ function ChatRoomScreen({
   onSendMessage: (message: string) => void
   onRecordSocialView: (viewKind: SocialViewKind) => void
   onSharePortfolio: () => void
+  onCancelPortfolioShare: (shareId: string) => void
   openOrders: OpenOrder[]
   onUpdateOpenOrder: (orderId: string, update: OpenOrderUpdate) => void
   onCancelOpenOrder: (orderId: string) => void
@@ -1278,6 +1449,10 @@ function ChatRoomScreen({
   const [isTradeSheetOpen, setIsTradeSheetOpen] = useState(false)
   const [tradeEntryIntent, setTradeEntryIntent] = useState<TradeEntryIntent | null>(null)
   const [isPortfolioSheetOpen, setIsPortfolioSheetOpen] = useState(false)
+  const [sharedPortfolio, setSharedPortfolio] = useState<{ shareId: string; snapshot: SharedPortfolioSnapshot } | null>(null)
+  const [shareClock, setShareClock] = useState(() => Date.now())
+  const [pendingPortfolioShareCancelId, setPendingPortfolioShareCancelId] = useState<string | null>(null)
+  const [portfolioShareNotice, setPortfolioShareNotice] = useState('')
   const [isTradeHistorySheetOpen, setIsTradeHistorySheetOpen] = useState(false)
   const [isRankingSheetOpen, setIsRankingSheetOpen] = useState(false)
   const [isCompetitionHostSheetOpen, setIsCompetitionHostSheetOpen] = useState(false)
@@ -1295,10 +1470,44 @@ function ChatRoomScreen({
   const tradeSheetDismissTimerRef = useRef<number | null>(null)
   const chatSwipeStartYRef = useRef<number | null>(null)
   const canSendMessage = messageDraft.trim().length > 0
+  const visibleRoomTimeline = roomTimeline.filter((item) => item.kind !== 'portfolio-share' || item.snapshot.expiresAt > shareClock)
 
   useEffect(() => {
     setRevealedBlockedMessageIds([])
+    setSharedPortfolio(null)
+    setPendingPortfolioShareCancelId(null)
+    setPortfolioShareNotice('')
+    setShareClock(Date.now())
   }, [room.id])
+
+  useEffect(() => {
+    const nextExpiry = roomTimeline
+      .filter((item): item is Extract<RoomTimelineItem, { kind: 'portfolio-share' }> => item.kind === 'portfolio-share' && item.snapshot.expiresAt > shareClock)
+      .reduce((earliest, item) => Math.min(earliest, item.snapshot.expiresAt), Number.POSITIVE_INFINITY)
+    if (!Number.isFinite(nextExpiry)) return
+
+    const timer = window.setTimeout(() => setShareClock(Date.now()), Math.min(1000, Math.max(50, nextExpiry - shareClock + 20)))
+    return () => window.clearTimeout(timer)
+  }, [roomTimeline, shareClock])
+
+  useEffect(() => {
+    if (!sharedPortfolio) return
+    const shareIsVisible = roomTimeline.some((item) => item.id === sharedPortfolio.shareId && item.kind === 'portfolio-share' && item.snapshot.expiresAt > shareClock)
+    if (!shareIsVisible) setSharedPortfolio(null)
+  }, [roomTimeline, shareClock, sharedPortfolio])
+
+  useEffect(() => {
+    const pendingShareIsVisible = roomTimeline.some((item) => item.id === pendingPortfolioShareCancelId && item.kind === 'portfolio-share' && item.snapshot.expiresAt > shareClock)
+    if (pendingPortfolioShareCancelId && !pendingShareIsVisible) {
+      setPendingPortfolioShareCancelId(null)
+    }
+  }, [pendingPortfolioShareCancelId, roomTimeline, shareClock])
+
+  useEffect(() => {
+    if (!portfolioShareNotice) return
+    const timer = window.setTimeout(() => setPortfolioShareNotice(''), 2200)
+    return () => window.clearTimeout(timer)
+  }, [portfolioShareNotice])
 
   const revealBlockedMessage = (messageId: string) => {
     setRevealedBlockedMessageIds((currentIds) => currentIds.includes(messageId) ? currentIds : [...currentIds, messageId])
@@ -1335,10 +1544,10 @@ function ChatRoomScreen({
   }, [isCompetitionParticipant, isCompetitionSpectator, isCompetitionOutcome, room.id])
 
   useEffect(() => {
-    if (roomTimeline.length > 0) {
+    if (visibleRoomTimeline.length > 0) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
     }
-  }, [roomTimeline])
+  }, [visibleRoomTimeline.length])
 
   useEffect(() => {
     if (!isTradeSheetOpen) return
@@ -1430,6 +1639,7 @@ function ChatRoomScreen({
   }
 
   const openTradeSheet = (intent: TradeEntryIntent | null = null) => {
+    setSharedPortfolio(null)
     setTradeEntryIntent(intent)
     setIsTradeSheetDragging(false)
     setIsTradeSheetDismissing(false)
@@ -1478,6 +1688,7 @@ function ChatRoomScreen({
   }
 
   const openPortfolioSheet = () => {
+    setSharedPortfolio(null)
     setIsRankingSheetOpen(false)
     setIsTradeHistorySheetOpen(false)
     onRecordSocialView('balance')
@@ -1499,6 +1710,7 @@ function ChatRoomScreen({
 
   const openRankingSheet = () => {
     closeTradeSheet()
+    setSharedPortfolio(null)
     setIsPortfolioSheetOpen(false)
     setIsTradeHistorySheetOpen(false)
     if (isActiveCompetition) onRecordSocialView('ranking')
@@ -1508,6 +1720,27 @@ function ChatRoomScreen({
   const sharePortfolio = () => {
     onSharePortfolio()
     setIsPortfolioSheetOpen(false)
+  }
+
+  const openSharedPortfolio = (item: Extract<RoomTimelineItem, { kind: 'portfolio-share' }>) => {
+    const now = Date.now()
+    if (item.snapshot.expiresAt <= now) {
+      setShareClock(now)
+      return
+    }
+    setShareClock(now)
+    closeTradeSheet()
+    setIsPortfolioSheetOpen(false)
+    setIsTradeHistorySheetOpen(false)
+    setIsRankingSheetOpen(false)
+    setSharedPortfolio({ shareId: item.id, snapshot: item.snapshot })
+  }
+
+  const cancelPortfolioShare = () => {
+    if (!pendingPortfolioShareCancelId) return
+    onCancelPortfolioShare(pendingPortfolioShareCancelId)
+    setPendingPortfolioShareCancelId(null)
+    setPortfolioShareNotice('잔고 공유를 취소했어요.')
   }
 
   const startTradeSheetDrag = (event: ReactPointerEvent<HTMLDivElement>) => {
@@ -1546,6 +1779,7 @@ function ChatRoomScreen({
           </div>
         </header>
         {competitionNotice && <div className="competition-popup-notice" role="status"><CompetitionTrophyIcon /><span>{competitionNotice}</span></div>}
+        {portfolioShareNotice && <div className="portfolio-share-toast" role="status">{portfolioShareNotice}</div>}
         {isCompetitionParticipant && <section className="chat-account-hud" aria-label="내 대회 현황">
           <div className="chat-account-hud-card">
             <div className="chat-account-hud-main">
@@ -1698,7 +1932,7 @@ function ChatRoomScreen({
                   </article>}
             </div>
           ))}
-          {roomTimeline.map((item) => {
+          {visibleRoomTimeline.map((item) => {
             if (item.kind === 'message') {
               return (
                 <article className="chat-message outgoing" key={item.id}>
@@ -1718,15 +1952,18 @@ function ChatRoomScreen({
               )
             }
 
-            if (item.kind === 'portfolio-share') return (
-              <article className="chat-portfolio-share" key={item.id}>
-                <span className="chat-portfolio-share-badge">잔고 공유</span>
-                <strong>김형진님의 포트폴리오</strong>
-                <p>총자산 {formatWon(TOTAL_ASSET)} · {formatReturn(TOTAL_RETURN)}</p>
-                <small>삼성전자 · SK하이닉스 외 3종목</small>
-                <time>{item.sentAt}</time>
-              </article>
-            )
+            if (item.kind === 'portfolio-share') {
+              return (
+                <PortfolioShareMessage
+                  item={item}
+                  now={shareClock}
+                  isMine={item.snapshot.ownerName === '김형진'}
+                  onOpen={openSharedPortfolio}
+                  onRequestCancel={setPendingPortfolioShareCancelId}
+                  key={item.id}
+                />
+              )
+            }
 
             if (item.kind === 'lounge-create-event') return (
               <div className="chat-join-alert" role="status" key={item.id}>
@@ -1843,6 +2080,22 @@ function ChatRoomScreen({
       )}
       {isCompetitionParticipant && isPortfolioSheetOpen && (
         <PortfolioSheet isReset={Boolean(room.accountReset)} initialCapital={room.competition?.initialCapital} viewCount={viewCounts.balance} openOrders={openOrders} onClose={() => setIsPortfolioSheetOpen(false)} onShare={sharePortfolio} onOpenHistory={openTradeHistorySheet} onOpenPosition={openPositionTradeFromPortfolio} onOpenOrder={openOrderManagerFromPortfolio} />
+      )}
+      {sharedPortfolio && sharedPortfolio.snapshot.expiresAt > shareClock && (
+        <SharedPortfolioSheet snapshot={sharedPortfolio.snapshot} now={shareClock} onClose={() => setSharedPortfolio(null)} />
+      )}
+      {pendingPortfolioShareCancelId && (
+        <div className="portfolio-share-cancel-layer">
+          <button type="button" className="portfolio-share-cancel-backdrop" aria-label="잔고 공유 취소 메뉴 닫기" onClick={() => setPendingPortfolioShareCancelId(null)} />
+          <section className="portfolio-share-cancel-sheet" role="dialog" aria-modal="true" aria-labelledby="portfolio-share-cancel-title">
+            <span className="portfolio-share-cancel-handle" aria-hidden="true" />
+            <small>내가 보낸 잔고 공유</small>
+            <strong id="portfolio-share-cancel-title">이 잔고 공유를 취소할까요?</strong>
+            <p>즉시 대화방에서 사라지고 다시 볼 수 없어요.</p>
+            <button type="button" className="is-destructive" onClick={cancelPortfolioShare}>잔고 공유 취소</button>
+            <button type="button" onClick={() => setPendingPortfolioShareCancelId(null)}>닫기</button>
+          </section>
+        </div>
       )}
       {isCompetitionParticipant && isTradeHistorySheetOpen && room.competition && (
         <TradeHistorySheet competitionTitle={room.competition.title} periodLabel={`${formatCompetitionDate(room.competition.startDate)} – ${formatCompetitionDate(room.competition.endDate)}`} mulligansUsed={mulligansUsed} onClose={returnToPortfolioFromTradeHistory} />
@@ -2818,7 +3071,17 @@ export default function App() {
   const [friendItems, setFriendItems] = useState<FriendProfile[]>(friends.filter((friend) => friend.id === 'kim-young-gyu' || friend.id === 'jo-jin-man'))
   const [blockedFriendItems, setBlockedFriendItems] = useState<FriendProfile[]>(friends.filter((friend) => friend.id === 'jang-woo-jin'))
   const [activeRoomId, setActiveRoomId] = useState('ssangddi')
-  const [roomTimelines, setRoomTimelines] = useState<Record<string, RoomTimelineItem[]>>({})
+  const [roomTimelines, setRoomTimelines] = useState<Record<string, RoomTimelineItem[]>>(() => {
+    const sharedAt = Date.now()
+    return {
+      ssangddi: [{
+        id: 'fixture-kim-young-gyu-portfolio-share',
+        kind: 'portfolio-share',
+        sentAt: '방금',
+        snapshot: createYoungGyuSharedPortfolioSnapshot(sharedAt),
+      }],
+    }
+  })
   const [openOrders, setOpenOrders] = useState<OpenOrder[]>(initialOpenOrders)
   const [viewCounts, setViewCounts] = useState<Record<SocialViewKind, number>>({ balance: 0, ranking: 0 })
   const [competitionNotice, setCompetitionNotice] = useState('')
@@ -2896,7 +3159,22 @@ export default function App() {
   }
 
   const sharePortfolio = () => {
-    appendRoomTimeline(activeRoomId, { id: crypto.randomUUID(), kind: 'portfolio-share', sentAt: getCurrentChatTime() })
+    const sharedAt = Date.now()
+    const sharedAtLabel = getCurrentChatTime()
+    const room = chatRoomItems.find((item) => item.id === activeRoomId)
+    appendRoomTimeline(activeRoomId, {
+      id: crypto.randomUUID(),
+      kind: 'portfolio-share',
+      sentAt: sharedAtLabel,
+      snapshot: createMySharedPortfolioSnapshot(sharedAt, sharedAtLabel, Boolean(room?.accountReset), room?.competition?.initialCapital),
+    })
+  }
+
+  const cancelPortfolioShare = (shareId: string) => {
+    setRoomTimelines((currentTimelines) => ({
+      ...currentTimelines,
+      [activeRoomId]: (currentTimelines[activeRoomId] ?? []).filter((item) => item.id !== shareId),
+    }))
   }
 
   const updateOpenOrder = (orderId: string, update: OpenOrderUpdate) => {
@@ -3285,6 +3563,7 @@ export default function App() {
         onSendMessage={sendChatMessage}
         onRecordSocialView={recordSocialView}
         onSharePortfolio={sharePortfolio}
+        onCancelPortfolioShare={cancelPortfolioShare}
         openOrders={openOrders}
         onUpdateOpenOrder={updateOpenOrder}
         onCancelOpenOrder={cancelOpenOrder}

@@ -21,8 +21,31 @@ import {
 
 type SheetEdge = 'top' | 'bottom'
 type PortfolioTab = 'long' | 'short' | 'open'
+type SharedPortfolioTab = Exclude<PortfolioTab, 'open'>
 type TradeHistoryFilter = 'all' | 'long' | 'short'
 type TradeHistoryDirection = 'buy' | 'sell' | 'short' | 'cover'
+
+export type SharedPortfolioPosition = {
+  name: string
+  code: string
+  price: number
+  change: number
+  quantity: number
+  marketValue: number
+}
+
+export type SharedPortfolioSnapshot = {
+  ownerName: string
+  sharedAt: number
+  sharedAtLabel: string
+  expiresAt: number
+  totalAsset: number
+  orderableCash: number
+  longMarketValue: number
+  shortMarketValue: number
+  longPositions: SharedPortfolioPosition[]
+  shortPositions: SharedPortfolioPosition[]
+}
 
 type TradeHistoryItem = {
   id: string
@@ -287,6 +310,62 @@ export function PortfolioSheet({
           <button type="button" onClick={onShare}>채팅방에 잔고 공유</button>
         </div>
       </footer>
+    </SwipeSheet>
+  )
+}
+
+export function SharedPortfolioSheet({
+  snapshot,
+  now,
+  onClose,
+}: {
+  snapshot: SharedPortfolioSnapshot
+  now: number
+  onClose: () => void
+}) {
+  const [tab, setTab] = useState<SharedPortfolioTab>('long')
+  const positions = tab === 'long' ? snapshot.longPositions : snapshot.shortPositions
+  const remainingSeconds = Math.max(0, Math.ceil((snapshot.expiresAt - now) / 1000))
+  const remainingMinutes = Math.floor(remainingSeconds / 60)
+  const remainingLabel = `${remainingMinutes}:${String(remainingSeconds % 60).padStart(2, '0')} 남음`
+
+  return (
+    <SwipeSheet edge="top" label={`${snapshot.ownerName}님의 공유 잔고`} sheetClassName="social-sheet-portfolio shared-portfolio-sheet" onClose={onClose}>
+      <header className="portfolio-sheet-header shared-portfolio-header">
+        <span><strong>{snapshot.ownerName}님의 잔고</strong><small>{snapshot.sharedAtLabel} 공유 · 공유 시점 기준</small></span>
+        <span className="portfolio-live-mark is-shared">읽기 전용 · {remainingLabel}</span>
+      </header>
+
+      <section className="portfolio-nav-card shared-portfolio-nav-card" aria-label={`${snapshot.ownerName}님의 공유 자산 요약`}>
+        <span><small>총자산</small><strong>{formatWon(snapshot.totalAsset)}</strong></span>
+        <span><small>공개 범위</small><strong>5분 스냅샷</strong></span>
+      </section>
+
+      <section className="portfolio-balance-grid" aria-label="공유 잔고 구성">
+        <span><small>주문 가능 현금</small><strong>{formatWon(snapshot.orderableCash)}</strong></span>
+        <span><small>Long 평가액</small><strong>{formatWon(snapshot.longMarketValue)}</strong></span>
+        <span><small>Short 평가액</small><strong>{formatWon(snapshot.shortMarketValue)}</strong></span>
+      </section>
+
+      <div className="portfolio-tabs shared-portfolio-tabs" role="tablist" aria-label="공유 잔고 종류">
+        <button type="button" role="tab" aria-selected={tab === 'long'} className={tab === 'long' ? 'is-selected' : ''} onClick={() => setTab('long')}>보유종목 <small>{snapshot.longPositions.length}</small></button>
+        <button type="button" role="tab" aria-selected={tab === 'short'} className={tab === 'short' ? 'is-selected' : ''} onClick={() => setTab('short')}>공매도 <small>{snapshot.shortPositions.length}</small></button>
+      </div>
+
+      <p className="portfolio-session-note shared-portfolio-note">공유 이후의 시세·주문·체결은 반영되지 않아요.</p>
+
+      <div className="portfolio-holdings shared-portfolio-holdings" aria-live="polite">
+        {positions.length === 0 ? (
+          <div className="portfolio-empty-state"><strong>{tab === 'long' ? '보유종목이 없어요' : '공매도 포지션이 없어요'}</strong><span>공유 시점의 잔고를 표시하고 있어요.</span></div>
+        ) : positions.map((position) => (
+          <article className="portfolio-holding-row shared-portfolio-row" key={`${tab}-${position.code}`}>
+            <span className="portfolio-holding-main"><strong>{position.name}</strong><small>{position.code} · {position.quantity.toLocaleString('ko-KR')}주</small></span>
+            <span className="portfolio-holding-value"><strong>{formatWon(position.marketValue)}</strong><small>현재가 {formatWon(position.price)} · <em className={position.change >= 0 ? 'is-positive' : 'is-negative'}>{position.change >= 0 ? '+' : ''}{position.change}%</em></small></span>
+          </article>
+        ))}
+      </div>
+
+      <footer className="shared-portfolio-footer">5분이 지나면 이 잔고는 대화방과 현재 화면에서 자동으로 사라져요.</footer>
     </SwipeSheet>
   )
 }
